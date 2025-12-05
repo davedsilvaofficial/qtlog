@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+
+# ========================================
+# qtlog.sh - Quantum Trek logging utility
+# ========================================
+
+set -e
+
+# --- Settings & Environment ---
+REPO_DIR="$HOME/qtlog_repo"
+ENV_FILE="$REPO_DIR/.qtlog_env"
+LOG_DIR="$REPO_DIR/Log"
+VERS_DIR="$REPO_DIR/versions"
+
+# --- Load environment if exists ---
+if [ -f "$ENV_FILE" ]; then
+  source "$ENV_FILE"
+fi
+
+# Defaults if not provided
+QTLOG_AUTO_PUSH="${QTLOG_AUTO_PUSH:-false}"
+
+# --- Require log message ---
+LOG_TITLE="$1"
+if [ -z "$LOG_TITLE" ]; then
+  echo "Usage: ./qtlog.sh \"Log message\""
+  exit 1
+fi
+
+# --- Timestamp ---
+NOW_DATE=$(date +"%Y-%m-%d")
+NOW_TIME=$(date +"%H%M")
+
+# Directory layout
+TARGET_DIR="$LOG_DIR/$NOW_DATE"
+mkdir -p "$TARGET_DIR" "$VERS_DIR"
+
+TARGET_FILE="$TARGET_DIR/$NOW_TIME.log"
+
+# --- Write log entry ---
+{
+  echo "$NOW_DATE $NOW_TIME $LOG_TITLE"
+} >> "$TARGET_FILE"
+
+echo "qtlog: created entry '$NOW_DATE $NOW_TIME $LOG_TITLE' under $TARGET_DIR"
+
+# --- Version snapshot ---
+cp "$0" "$VERS_DIR/qtlog.sh.$(date +"%Y%m%d_%H%M%S")"
+
+# --- Auto-push logic ---
+if [ "$QTLOG_AUTO_PUSH" = "true" ]; then
+  cd "$REPO_DIR"
+  git add .
+  git commit -m "$LOG_TITLE" || true
+  git push || true
+fi
+
+exit 0
