@@ -1,67 +1,62 @@
-#!/data/data/com.termux/files/usr/bin/bash
-# qtlog.sh - Quantum Trek logging script with device-tagged commits
-
+#!/usr/bin/env bash
 set -euo pipefail
 
-REPO_DIR="$HOME/qtlog_repo"
-ENV_FILE="$REPO_DIR/.qtlog_env"
+# Root of the qtlog repository
+REPO_ROOT="$HOME/qtlog_repo"
+cd "$REPO_ROOT"
 
-# --- Load environment configuration ---
+ENV_FILE="$REPO_ROOT/.qtlog_env"
 if [ ! -f "$ENV_FILE" ]; then
-  echo "qtlog: env file $ENV_FILE not found" >&2
+  echo "qtlog: env file $ENV_FILE not found"
   exit 1
 fi
 
-# shellcheck source=/dev/null
+# Load configuration
+# shellcheck disable=SC1090
 . "$ENV_FILE"
 
-# Defaults if not set
-QTLOG_USER="${QTLOG_USER:-unknown_user}"
+# Default values if not set
+QTLOG_USER="${QTLOG_USER:-$(whoami)}"
 QTLOG_DEVICE="${QTLOG_DEVICE:-UnknownDevice}"
-QTLOG_LOG_DIR="${QTLOG_LOG_DIR:-$REPO_DIR/versions}"
-QTLOG_TIMESTAMP_FORMAT="${QTLOG_TIMESTAMP_FORMAT:-%Y-%m-%d_%H-%M-%S}"
+QTLOG_LOG_DIR="${QTLOG_LOG_DIR:-$REPO_ROOT/Log}"
+QTLOG_TIMESTAMP_FORMAT="${QTLOG_TIMESTAMP_FORMAT:-%Y-%m-%d %H%M}"
 QTLOG_AUTO_PUSH="${QTLOG_AUTO_PUSH:-false}"
+QTLOG_AUTO_PULL="${QTLOG_AUTO_PULL:-true}"
 
-# --- Log message from arguments ---
-if [ "$#" -lt 1 ]; then
-  echo "Usage: ./qtlog.sh \"log message\"" >&2
-  exit 1
+# --- Auto-pull from origin ---
+if [ "$QTLOG_AUTO_PULL" = "true" ]; then
+  echo "qtlog: pulling latest changes from origin..."
+  git pull --rebase
 fi
+
+LOG_DATE="$(date +%Y-%m-%d)"
+LOG_TIME="$(date +%H%M)"
+LOG_STAMP="$(date +"$QTLOG_TIMESTAMP_FORMAT")"
 
 LOG_TITLE="$*"
-
-# --- Timestamps ---
-DATE="$(date +%Y-%m-%d)"
-TIME="$(date +%H%M)"
-
-# Human-readable log line
-LOG_ENTRY="$DATE $TIME $LOG_TITLE"
-
-# --- Log file path ---
-LOG_DAY_DIR="$REPO_DIR/Log/$DATE"
-mkdir -p "$LOG_DAY_DIR"
-
-LOG_FILE="$LOG_DAY_DIR/$TIME.log"
-
-# --- Append to log file ---
-echo "$LOG_ENTRY" >> "$LOG_FILE"
-
-# --- Version the script itself ---
-mkdir -p "$QTLOG_LOG_DIR"
-VERSION_STAMP="$(date +"$QTLOG_TIMESTAMP_FORMAT")"
-cp "$REPO_DIR/qtlog.sh" "$QTLOG_LOG_DIR/qtlog.sh.$VERSION_STAMP"
-
-# --- Git commit / push with device tag ---
-cd "$REPO_DIR"
-
-COMMIT_MSG="[$QTLOG_DEVICE] $LOG_ENTRY"
-
-if [ "$QTLOG_AUTO_PUSH" = "true" ]; then
-  git add .
-  git commit -m "$COMMIT_MSG"
-  git push
+if [ -z "$LOG_TITLE" ]; then
+  LOG_TITLE="(no message)"
 fi
 
-echo "qtlog: created entry '$LOG_ENTRY' under $LOG_FILE"
+# Device-tagged log entry
+ENTRY="[$QTLOG_DEVICE] $LOG_STAMP $LOG_TITLE"
 
-echo "qtlog: commit message (if auto-push enabled): $COMMIT_MSG"
+DAY_DIR="$QTLOG_LOG_DIR/$LOG_DATE"
+mkdir -p "$DAY_DIR"
+LOG_FILE="$DAY_DIR/$LOG_TIME.log"
+
+echo "$ENTRY" >> "$LOG_FILE"
+
+# Snapshot current script version
+VERSIONS_DIR="$REPO_ROOT/versions"
+mkdir -p "$VERSIONS_DIR"
+cp "$REPO_ROOT/qtlog.sh" "$VERSIONS_DIR/qtlog.sh.$(date +%Y%m%d_%H%M%S)"
+
+echo "qtlog: created entry '$ENTRY' under $LOG_FILE"
+
+git add .
+git commit -m "$ENTRY"
+
+if [ "$QTLOG_AUTO_PUSH" = "true" ]; then
+  git push
+fi

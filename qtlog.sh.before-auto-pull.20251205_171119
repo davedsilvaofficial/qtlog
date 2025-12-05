@@ -1,0 +1,67 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# qtlog.sh - Quantum Trek logging script with device-tagged commits
+
+set -euo pipefail
+
+REPO_DIR="$HOME/qtlog_repo"
+ENV_FILE="$REPO_DIR/.qtlog_env"
+
+# --- Load environment configuration ---
+if [ ! -f "$ENV_FILE" ]; then
+  echo "qtlog: env file $ENV_FILE not found" >&2
+  exit 1
+fi
+
+# shellcheck source=/dev/null
+. "$ENV_FILE"
+
+# Defaults if not set
+QTLOG_USER="${QTLOG_USER:-unknown_user}"
+QTLOG_DEVICE="${QTLOG_DEVICE:-UnknownDevice}"
+QTLOG_LOG_DIR="${QTLOG_LOG_DIR:-$REPO_DIR/versions}"
+QTLOG_TIMESTAMP_FORMAT="${QTLOG_TIMESTAMP_FORMAT:-%Y-%m-%d_%H-%M-%S}"
+QTLOG_AUTO_PUSH="${QTLOG_AUTO_PUSH:-false}"
+
+# --- Log message from arguments ---
+if [ "$#" -lt 1 ]; then
+  echo "Usage: ./qtlog.sh \"log message\"" >&2
+  exit 1
+fi
+
+LOG_TITLE="$*"
+
+# --- Timestamps ---
+DATE="$(date +%Y-%m-%d)"
+TIME="$(date +%H%M)"
+
+# Human-readable log line
+LOG_ENTRY="$DATE $TIME $LOG_TITLE"
+
+# --- Log file path ---
+LOG_DAY_DIR="$REPO_DIR/Log/$DATE"
+mkdir -p "$LOG_DAY_DIR"
+
+LOG_FILE="$LOG_DAY_DIR/$TIME.log"
+
+# --- Append to log file ---
+echo "$LOG_ENTRY" >> "$LOG_FILE"
+
+# --- Version the script itself ---
+mkdir -p "$QTLOG_LOG_DIR"
+VERSION_STAMP="$(date +"$QTLOG_TIMESTAMP_FORMAT")"
+cp "$REPO_DIR/qtlog.sh" "$QTLOG_LOG_DIR/qtlog.sh.$VERSION_STAMP"
+
+# --- Git commit / push with device tag ---
+cd "$REPO_DIR"
+
+COMMIT_MSG="[$QTLOG_DEVICE] $LOG_ENTRY"
+
+if [ "$QTLOG_AUTO_PUSH" = "true" ]; then
+  git add .
+  git commit -m "$COMMIT_MSG"
+  git push
+fi
+
+echo "qtlog: created entry '$LOG_ENTRY' under $LOG_FILE"
+
+echo "qtlog: commit message (if auto-push enabled): $COMMIT_MSG"

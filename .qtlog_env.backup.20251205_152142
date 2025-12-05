@@ -1,0 +1,16 @@
+# qtlog environment configuration
+
+# Username
+QTLOG_USER="davedsilvaofficial"
+
+# Device name (change per device)
+QTLOG_DEVICE="SamsungGalaxyFold7"
+
+# Local log directory
+QTLOG_LOG_DIR="$HOME/qtlog_repo/versions"
+
+# Timestamp format
+QTLOG_TIMESTAMP_FORMAT="%Y-%m-%d_%H-%M-%S"
+
+# Auto push setting
+QTLOG_AUTO_PUSH="true"
