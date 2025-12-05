@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Quick log for WBS / IP Changes
+~/qtlog.sh "WBS / IP Changes"
