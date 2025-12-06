@@ -3,3 +3,7 @@
 # Ignore local script backups
 qtlog.sh.backup.*
 qtlog.sh.before-log-format.*
+
+# Ignore local script backups
+qtlog.sh.backup.*
+qtlog.sh.before-log-format.*
