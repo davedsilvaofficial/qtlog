@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+# qtlog.sh - simple multi-device logging with Git sync
+
+set -e
+
+# --- Base repo directory ---
+REPO_DIR="$HOME/qtlog_repo"
+cd "$REPO_DIR"
+
+# --- Load environment config ---
+ENV_FILE="$REPO_DIR/.qtlog_env"
+if [ ! -f "$ENV_FILE" ]; then
+  echo "qtlog: env file $ENV_FILE not found"
+  echo "qtlog: please create it before using this script."
+  exit 1
+fi
+
+. "$ENV_FILE"
+
+# --- Defaults ---
+QTLOG_USER="${QTLOG_USER:-unknown}"
+QTLOG_DEVICE="${QTLOG_DEVICE:-unknown-device}"
+QTLOG_LOG_DIR="${QTLOG_LOG_DIR:-$REPO_DIR/Log}"
+QTLOG_TIMESTAMP_FORMAT="${QTLOG_TIMESTAMP_FORMAT:-%Y-%m-%d %H%M}"
+QTLOG_AUTO_PULL="${QTLOG_AUTO_PULL:-true}"
+QTLOG_AUTO_PUSH="${QTLOG_AUTO_PUSH:-true}"
+
+# --- Directories ---
+mkdir -p "$QTLOG_LOG_DIR"
+VERSIONS_DIR="$REPO_DIR/versions"
+mkdir -p "$VERSIONS_DIR"
+
+# --- Timestamps ---
+LOG_DATE="$(date +%Y-%m-%d)"
+LOG_TIMESTAMP="$(date +"$QTLOG_TIMESTAMP_FORMAT")"
+LOG_FILE="$QTLOG_LOG_DIR/$LOG_DATE.log"
+
+# --- Entry content ---
+LOG_TITLE="[$QTLOG_DEVICE] $LOG_DATE $LOG_TIMESTAMP $*"
+ENTRY_LINE="$LOG_TITLE"
+
+# --- Write log entry ---
+echo "$ENTRY_LINE" >> "$LOG_FILE"
+
+# --- Snapshot script version ---
+SNAPSHOT="$VERSIONS_DIR/qtlog.sh.$(date +%Y%m%d_%H%M%S)"
+cp "$REPO_DIR/qtlog.sh" "$SNAPSHOT"
+
+# --- Auto pull ---
+if [ "$QTLOG_AUTO_PULL" = "true" ]; then
+  echo "qtlog: pulling latest changes..."
+  git pull --rebase || echo "qtlog: warning: git pull failed"
+fi
+
+# --- Stage changes ---
+git add "$LOG_FILE" "$SNAPSHOT"
+
+# --- Commit if needed ---
+if ! git diff --cached --quiet; then
+  git commit -m "$LOG_TITLE"
+
+  # --- Auto push ---
+  if [ "$QTLOG_AUTO_PUSH" = "true" ]; then
+    git push
+  fi
+else
+  echo "qtlog: nothing new to commit."
+fi
+
+echo "qtlog: created entry '$ENTRY_LINE' under $LOG_FILE"
