@@ -1,380 +1,230 @@
 # Quantum Trek – SEC & Investor Filing Notes
 
-# Quantum Trek – SEC & Investor Filing Notes
-
 **Document Name:** `SEC-Filing-Notes.md`  
-**Purpose:** Working notes and structure for SEC-style filings and institutional investor materials (not a legal document; internal draft workspace).
+**Purpose:** Working notes and structure for SEC-style filings and institutional investor materials.  
+**Status:** Internal draft – *not* a legal document or official filing.
+
+---
+
+## Table of Contents
+
+1. Company Overview  
+2. Track Record & Proof Points  
+3. Products & Business Model  
+4. Markets & Use Cases  
+5. Legal & Regulatory Considerations  
+6. Risk Factors (Brainstorm)  
+7. Use of Proceeds (Draft Buckets)  
+8. Filing Architecture & Data Room  
+9. Next Actions – Filing Prep  
+10. Links & References  
+11. Revision History  
 
 ---
 
 ## 1. Company Overview
 
-- Legal entity:
-  - Quantum Trek Corporation (jurisdiction, incorporation date TBD)
-  - Related entities: Dark Star,  Quantum Qid, etc.
-- Mission:
-  - Advance quantum-inspired technologies for energy, defense, and finance.
-- Core theme:
-  - “Quantum Re-Engineering” – applying quantum mechanical math to rework existing technologies.
+- **Legal Entity:**  
+  Quantum Trek Corporation  
+  (details: jurisdiction, incorporation date, entity type)
+
+- **Mission:**  
+  Advance quantum-inspired technologies in energy, aerospace/defense, and financial optimization.
+
+- **Core Theory:**  
+  **Quantum Re-Engineering** — applying quantum mechanical mathematics to rework existing technologies and systems.
+
+- **Key Programs Under Quantum Trek:**  
+  - **QuantumFusion** — next-generation energy systems.  
+  - **Quantum QID** — technology, education, and human-capital development platform for advanced manufacturing, space technology, and energy systems.  
+  - **Dark Star (legacy and R&D unit)** — concept laboratory focused on extreme material science, propulsion research, and singularity-based concepts.
+
+> **TO DO:** Insert exact legal facts (incorporation details, directors, etc.) after verification.
 
 ---
 
 ## 2. Track Record & Proof Points
 
-- PriceMetrix / IMSG:
-  - $6T assets, performance track record (high level)
-- QuantumFusion:
-  - 1995 DND/DOD/Lockheed Martin Last Manned Fighter / Mach 34 work
-  - TMU (Ryerson) Aerospace collaboration
-- Other:
-  - DP World UAE seaport optimization pilot
-  - Maple Leaf Foods EPM case
-  - Any other references we choose to formalize
+### Enterprise / Finance
+- **PriceMetrix / Intelligent Market Solutions Group (IMSG)**  
+  ~$6T in assets tracked using proprietary math models and optimized advisory intelligence.
 
-_(Each bullet here will become a short, fact-checked paragraph later.)_
+### Energy & Aerospace
+- **QuantumFusion — historic work**  
+  1995 defense program: “Last Manned Fighter” (DND / DOD / Lockheed) — nuclear-powered Mach-34 VTOL air-space craft.  
+  Developed fusion-based propulsion concepts and power systems, including an early arc reactor prototype.
 
----
+- **QuantumFusion — academic collaboration**  
+  Prior work with aerospace faculty at Toronto Metropolitan University (formerly Ryerson).  
+  Joint interest to continue experimentation and validation.
 
-## 3. Business Model & Products
+### Logistics & Industrial Optimization
+- **Seaport optimization (DP World UAE)**  
+  Quantum mathematical approach to container stacking optimization for unloading efficiency.
 
-- Quantum Trek platform:
-  - QaaS (Quantum as a Service) concept
-- Key products / lines:
-  - QuantumFusion energy systems
-  - Quantum Re-Engineering consulting / toolkits
-  - ManuCan / workforce platforms
-  - QuantumKid / QuantumQID education + community policing layer
+### Community & Human Capital
+- **Quantum QID**  
+  Youth technology and skills accelerator building pathways into next-generation engineering and quantum-inspired problem solving.  
+  Designed around **real-world application**, not classroom theory.
 
----
-
-## 4. Market & Use Cases
-
-- Energy:
-  - Grid-scale, “Energy Cloud 4.0”, Planetary Microgrid concept
-- Defense:
-  - Advanced propulsion, fusion, command-and-control systems
-- Finance:
-# Quantum Trek – SEC & Investor Filing Notes
-
-**Document Name:** `SEC-Filing-Notes.md`  
-**Purpose:** Working notes and structure for SEC-style filings and institutional investor materials (not a legal document; internal draft workspace).
+> **TO DO:** Each bullet should become a clean, factual paragraph with dates, outcomes, and corroborating evidence.
 
 ---
 
-## 1. Company Overview
+## 3. Products & Business Model
 
-- Legal entity:
-  - Quantum Trek Corporation (jurisdiction, incorporation date TBD)
-  - Related entities: Dark Star,  Quantum Qid, etc.
-- Mission:
-  - Advance quantum-inspired technologies for energy, defense, and finance.
-- Core theme:
-  - “Quantum Re-Engineering” – applying quantum mechanical math to rework existing technologies.
+### Product Lines
+- **QuantumFusion**  
+  Fusion-inspired energy systems, propulsion concepts, and lightweight high-density power architectures.
 
----
+- **Quantum QID**  
+  A platform for developing skilled human capital for energy, aerospace, and quantum technologies through practical engagement and mission-driven learning.
 
-## 2. Track Record & Proof Points
+- **Quantum Re-Engineering Toolkits**  
+  Applying quantum mathematical frameworks to optimize industrial, energy, logistics, and financial systems.
 
-- PriceMetrix / IMSG:
-  - $6T assets, performance track record (high level)
-- QuantumFusion:
-  - 1995 DND/DOD/Lockheed Martin Last Manned Fighter / Mach 34 work
-  - TMU (Ryerson) Aerospace collaboration
-- Other:
-  - DP World UAE seaport optimization pilot
-  - Maple Leaf Foods EPM case
-  - Any other references we choose to formalize
+### Revenue Models (Preliminary Buckets)
+- Licensing of proprietary intellectual property  
+- Project-based engineering contracts  
+- Strategic joint ventures  
+- Platform access fees  
+- Research partnerships
 
-_(Each bullet here will become a short, fact-checked paragraph later.)_
+> **TO DO:** Build the exact monetization model with financial counsel.
 
 ---
 
-## 3. Business Model & Products
+## 4. Markets & Use Cases
 
-- Quantum Trek platform:
-  - QaaS (Quantum as a Service) concept
-- Key products / lines:
-  - QuantumFusion energy systems
-  - Quantum Re-Engineering consulting / toolkits
-  - ManuCan / workforce platforms
-  - QuantumKid / QuantumQID education + community policing layer
+### Energy
+- Fusion power platform development: grid, aerospace, and defense applications.  
+- “Energy Cloud” concept: distributed, high-density power network architecture.
 
----
+### Aerospace / Defense
+- Advanced propulsion development  
+- Materials research for non-Euclidean structures  
+- Power architectures inspired by singularity physics
 
-## 4. Market & Use Cases
+### Financial Optimization
+- High-performance advisory engines (legacy insight from $6T track record)
 
-- Energy:
-  - Grid-scale, “Energy Cloud 4.0”, Planetary Microgrid concept
-- Defense:
-  - Advanced propulsion, fusion, command-and-control systems
-- Finance:
-  - Risk, portfolio optimization, and capital formation
-- Workforce & Education:
-  - Advanced manufacturing, SDF, QuantumKid pipeline
+### Human Capital
+- Quantum QID global capability building  
+- Pipeline into space, energy, and advanced engineering sectors
+
+> **TO DO:** Market sizing analysis (TAM/SAM/SOM) for each vertical.
 
 ---
 
-## 5. Legal & Regulatory Considerations (Notes)
+## 5. Legal & Regulatory Considerations
 
-- Securities:
-  - Private placement memorandum (PPM)
-  - Future IPO / SEC S-1 or equivalent
-- Export controls / defense:
-  - DOD / ITAR / national security considerations
-- IP:
-  - Patents, trade secrets, know-how, prior art
+### Securities
+- Private Placement Memorandum (PPM)  
+- Future SEC filing for public listing (S-1 or similar)
+
+### Nuclear/Energy
+- Fusion-related regulatory pathways  
+- Jurisdiction-specific requirements for experimental platforms  
+- Export controls and national-security alignment
+
+### Intellectual Property
+- Patent strategy  
+- IP assignments and provenance (IMSG → Quantum Trek)  
+- R&D artifacts tied to defense programs  
+- Data room will require evidence of ownership and chain of custody.
+
+### Defense
+- DOD/DND involvement  
+- ITAR implications  
+- Sensitive technology disclosure frameworks
+
+> **TO DO:** Work with legal counsel for correct classification of historical programs.
 
 ---
 
-## 6. Risk Factors (Brainstorm List)
+## 6. Risk Factors (Brainstorm Only)
 
-_(Rough list for now; later we’ll formalize and sanitize language.)_
+- Technical feasibility and research timelines  
+- Regulatory and export-control uncertainty  
+- Capital requirements for experimental energy systems  
+- Concentration of knowledge with core founding team  
+- Defense program dependency risks  
+- Market adoption risks in highly regulated sectors  
+- Communications and reputational considerations
 
-- Technical risk: feasibility, timelines, dependence on bleeding-edge tech
-- Regulatory risk: export controls, nuclear/defense constraints
-- Capital risk: scale of funding required vs current state
-- Execution risk: team size, hiring, dependency on key individuals
-- Market risk: adoption by utilities, defense, governments, investors
+> **TO DO:** Convert into formal risk-factor language with counsel.
 
 ---
 
 ## 7. Use of Proceeds (Draft Buckets)
 
-High-level buckets (numbers later):
+(Numbers deliberately left out)
 
-- R&D (fusion, propulsion, quantum tooling)
-- Productization (platform, software, integration)
-- Partnerships (universities, utilities, defense, industry)
-- Governance & compliance (legal, SEC, audits)
-- Community / ecosystem (QuantumQid, outreach)
-
----
-
-## 8. Next Actions – Filing Prep
-
-1. Confirm corporate structure and cap table doc sources.
-2. Align PPM content and this notes file (cross-reference).
-3. Identify law firm(s) and SEC counsel for formal processes.
-4. Build internal data room structure (folders, permissions, naming).
-5. Sync with WBS Master so every item here has:
-   - WBS ID
-   - Owner
-   - Timeline
-   - Status
+- QuantumFusion R&D  
+- Quantum QID program expansion  
+- IP development and patent portfolio  
+- Platform development (Quantum Re-Engineering Toolkits)  
+- Legal and regulatory compliance  
+- Strategic partnerships and academic research  
+- Data room, audit, governance
 
 ---
 
-## 9. Links & References (to be filled)
+## 8. Filing Architecture & Data Room
 
-- GitHub repo(s):
-  - `qtlog` – logging + SOPs
-  - (future) core tech repos
-- Notion:
-  - QT ▸ Log
-  - Project pages (QuantumFusion, QuantumQid, etc.)
-- External:
-  - University partners
-  - Government programs (SDF, etc.)
+### Corporate Structure
+- Entity chart with subsidiary/legacy units  
+- Share classes, cap table, shareholder agreements
 
----
+### Core Documents
+- Corporate records  
+- Financials  
+- IP portfolio  
+- Defense-program artifacts (historical)  
+- Contracts, MOU/MOA, letters of intent
 
-## Revision History
+### Data Room Layout (Draft)
+- 01_Corporate  
+- 02_Financials  
+- 03_IP  
+- 04_Technology  
+- 05_Research & Defense Programs  
+- 06_Partners & MOUs  
+- 07_Governance & Policies  
+- 08_Communications & Presentations  
 
-- **v0.1 – 2025-12-06** – Initial scaffold created from chat with Dave D’Silvax 
-  - Risk, portfolio optimization, and capital formation
-- Workforce & Education:
-  - Advanced manufacturing, SDF, QuantumKid pipeline
-
----
-
-## 5. Legal & Regulatory Considerations (Notes)
-
-- Securities:
-  - Private placement memorandum (PPM)
-  - Future IPO / SEC S-1 or equivalent
-- Export controls / defense:
-  - DOD / ITAR / national security considerations
-- IP:
-  - Patents, trade secrets, know-how, prior art
+> **TO DO:** Link each folder to concrete tasks in the WBS.
 
 ---
 
-## 6. Risk Factors (Brainstorm List)
+## 9. Next Actions – Filing Prep
 
-_(Rough list for now; later we’ll formalize and sanitize language.)_
-
-- Technical risk: feasibility, timelines, dependence on bleeding-edge tech
-- Regulatory risk: export controls, nuclear/defense constraints
-- Capital risk: scale of funding required vs current state
-- Execution risk: team size, hiring, dependency on key individuals
-- Market risk: adoption by utilities, defense, governments, investors
-
----
-
-## 7. Use of Proceeds (Draft Buckets)
-
-High-level buckets (numbers later):
-
-- R&D (fusion, propulsion, quantum tooling)
-- Productization (platform, software, integration)
-- Partnerships (universities, utilities, defense, industry)
-- Governance & compliance (legal, SEC, audits)
-- Community / ecosystem (QuantumQid, outreach)
+1. Verify corporate structure details (jurisdiction, record copies).  
+2. Align PPM table of contents with this document.  
+3. Establish data room architecture.  
+4. Identify securities counsel with energy/defense experience.  
+5. Create high-integrity timeline of historical work with defensible evidence.  
+6. Bind all artifacts under Git-based SOP and commit history.
 
 ---
 
-## 8. Next Actions – Filing Prep
+## 10. Links & References
 
-1. Confirm corporate structure and cap table doc sources.
-2. Align PPM content and this notes file (cross-reference).
-3. Identify law firm(s) and SEC counsel for formal processes.
-4. Build internal data room structure (folders, permissions, naming).
-5. Sync with WBS Master so every item here has:
-   - WBS ID
-   - Owner
-   - Timeline
-   - Status
+- **GitHub Internal Docs**  
+  `qtlog` — logging + SOPs (this repo)
 
----
+- **Notion**  
+  QT ▸ Log  
+  QuantumFusion  
+  Quantum QID  
 
-## 9. Links & References (to be filled)
-
-- GitHub repo(s):
-  - `qtlog` – logging + SOPs
-  - (future) core tech repos
-- Notion:
-  - QT ▸ Log
-  - Project pages (QuantumFusion, QuantumQid, etc.)
-- External:
-  - University partners
-  - Government programs (SDF, etc.)
+- **Academic**  
+  Toronto Metropolitan University (Aerospace)  
 
 ---
 
-## Revision History
+## 11. Revision History
 
-- **v0.1 – 2025-12-06** – Initial scaffold created from chat with Dave D’Silva.**Document Name:** `SEC-Filing-Notes.md`  
-**Purpose:** Working notes and structure for SEC-style filings and institutional investor materials (not a legal document; internal draft workspace).
-
----
-
-## 1. Company Overview
-
-- Legal entity:
-  - Quantum Trek Corporation (jurisdiction, incorporation date TBD)
-  - Related entities: Dark Star, ManuCan, etc.
-- Mission:
-  - Advance quantum-inspired technologies for energy, defense, and finance.
-- Core theme:
-  - “Quantum Re-Engineering” – applying quantum mechanical math to rework existing technologies.
-
----
-
-## 2. Track Record & Proof Points
-
-- PriceMetrix / IMSG:
-  - $6T assets, performance track record (high level)
-- QuantumFusion:
-  - 1995 DND/DOD/Lockheed Martin Last Manned Fighter / Mach 34 work
-  - TMU (Ryerson) Aerospace collaboration
-- Other:
-  - DP World UAE seaport optimization pilot
-  - Maple Leaf Foods EPM case
-  - Any other references we choose to formalize
-
-_(Each bullet here will become a short, fact-checked paragraph later.)_
-
----
-
-## 3. Business Model & Products
-
-- Quantum Trek platform:
-  - QaaS (Quantum as a Service) concept
-- Key products / lines:
-  - QuantumFusion energy systems
-  - Quantum Re-Engineering consulting / toolkits
-  - ManuCan / workforce platforms
-  - QuantumKid / QuantumQID education + community policing layer
-
----
-
-## 4. Market & Use Cases
-
-- Energy:
-  - Grid-scale, “Energy Cloud 4.0”, Planetary Microgrid concept
-- Defense:
-  - Advanced propulsion, fusion, command-and-control systems
-- Finance:
-  - Risk, portfolio optimization, and capital formation
-- Workforce & Education:
-  - Advanced manufacturing, SDF, QuantumKid pipeline
-
----
-
-## 5. Legal & Regulatory Considerations (Notes)
-
-- Securities:
-  - Private placement memorandum (PPM)
-  - Future IPO / SEC S-1 or equivalent
-- Export controls / defense:
-  - DOD / ITAR / national security considerations
-- IP:
-  - Patents, trade secrets, know-how, prior art
-
----
-
-## 6. Risk Factors (Brainstorm List)
-
-_(Rough list for now; later we’ll formalize and sanitize language.)_
-
-- Technical risk: feasibility, timelines, dependence on bleeding-edge tech
-- Regulatory risk: export controls, nuclear/defense constraints
-- Capital risk: scale of funding required vs current state
-- Execution risk: team size, hiring, dependency on key individuals
-- Market risk: adoption by utilities, defense, governments, investors
-
----
-
-## 7. Use of Proceeds (Draft Buckets)
-
-High-level buckets (numbers later):
-
-- R&D (fusion, propulsion, quantum tooling)
-- Productization (platform, software, integration)
-- Partnerships (universities, utilities, defense, industry)
-- Governance & compliance (legal, SEC, audits)
-- Community / ecosystem (QuantumKid, ManuCan, outreach)
-
----
-
-## 8. Next Actions – Filing Prep
-
-1. Confirm corporate structure and cap table doc sources.
-2. Align PPM content and this notes file (cross-reference).
-3. Identify law firm(s) and SEC counsel for formal processes.
-4. Build internal data room structure (folders, permissions, naming).
-5. Sync with WBS Master so every item here has:
-   - WBS ID
-   - Owner
-   - Timeline
-   - Status
-
----
-
-## 9. Links & References (to be filled)
-
-- GitHub repo(s):
-  - `qtlog` – logging + SOPs
-  - (future) core tech repos
-- Notion:
-  - QT ▸ Log
-  - Project pages (QuantumFusion, QuantumKid, ManuCan, etc.)
-- External:
-  - University partners
-  - Government programs (SDF, etc.)
-
----
-
-## Revision History
-
-- **v0.1 – 2025-12-06** – Initial scaffold created from chat with Dave D’Silva.
+- **v0.3 — 2025-12-06** — Corrected program names, removed ManuCan, tightened SEC structure.  
+- **v0.2 — 2025-12-06** — Added structure and next-action sections.  
+- **v0.1 — 2025-12-06** — Initial scaffold from founder notes.
