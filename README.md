@@ -57,3 +57,17 @@ Some environments (Termux, subshells, pagers, external UIs) can display time tha
 ./qtlog.sh --reconcile
 
 ## Directory Structure
+
+---
+
+## Public vs Private Boundary
+
+This repository is **private by default**.
+
+Only the contents of the `/public` directory are intended to be used for:
+- documentation
+- examples
+- public sharing
+
+Everything else in this repository is considered **private, operational, or sensitive** and must never be published verbatim.
+
