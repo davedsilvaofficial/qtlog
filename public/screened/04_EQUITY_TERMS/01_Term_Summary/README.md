@@ -16,3 +16,6 @@ Notes:
 Suggested contents:
 - Equity_Term_Summary_<YYYY-MM-DD>.md
 - Investment_Structure_Overview_<YYYY-MM-DD>.md
+
+---
+All equity terms described herein are indicative only and are governed in all respects by the definitive Private Placement Memorandum (PPM) and related subscription documents.
