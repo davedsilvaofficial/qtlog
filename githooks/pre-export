@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+fail() { echo "ERROR: $*" >&2; exit 1; }
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+PUBLIC_DIR="$ROOT/public"
+SCREENED_DIR="$PUBLIC_DIR/screened"
+
+# Collect tracked public files
+if [ -d "$PUBLIC_DIR" ]; then
+  mapfile -t PUBLIC_TRACKED < <(git ls-files "$PUBLIC_DIR" 2>/dev/null || true)
+else
+  PUBLIC_TRACKED=()
+fi
+
+# 1) Block public files referencing private paths
+if [ "${#PUBLIC_TRACKED[@]}" -gt 0 ]; then
+  for f in "${PUBLIC_TRACKED[@]}"; do
+    [ -f "$ROOT/$f" ] || continue
+    if LC_ALL=C grep -nE '(\.\./|(^|[^[:alnum:]_])sec/)' "$ROOT/$f" >/dev/null 2>&1; then
+      fail "public file references private path (../ or sec/): $f"
+    fi
+  done
+fi
+
+# 2) Enforce screened-by header for public/screened/*
+if [ -d "$SCREENED_DIR" ]; then
+  mapfile -t SCREENED_TRACKED < <(git ls-files "$SCREENED_DIR" 2>/dev/null || true)
+else
+  SCREENED_TRACKED=()
+fi
+
+if [ "${#SCREENED_TRACKED[@]}" -gt 0 ]; then
+  for f in "${SCREENED_TRACKED[@]}"; do
+    [ -f "$ROOT/$f" ] || continue
+    if ! LC_ALL=C grep -qiE '^[[:space:]]*screened-by:' "$ROOT/$f"; then
+      fail "screened file missing required header 'screened-by:' : $f"
+    fi
+  done
+fi
+
+echo "pre-export: OK"
