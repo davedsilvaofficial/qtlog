@@ -7,3 +7,24 @@ qtlog.sh.before-log-format.*
 # Ignore local script backups
 qtlog.sh.backup.*
 qtlog.sh.before-log-format.*
+
+# --- PRIVATE (never commit) ---
+sec/
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.cer
+*.der
+*.jks
+*.keystore
+*.kdbx
+.env
+.env.*
+*.env
+secrets.*
+*secret*
+*token*
+*apikey*
+*api_key*
