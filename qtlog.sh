@@ -20,6 +20,7 @@ if [ -f "$HOME/.qtlog_env" ]; then
   . "$HOME/.qtlog_env"
 fi
 
+LOG_MODE="local"
 # --- Effective settings -------------------------------------------
 QTLOG_REPO_DIR="${QTLOG_REPO_DIR:-$QTLOG_REPO_DIR_DEFAULT}"
 QTLOG_LOG_SUBDIR="${QTLOG_LOG_SUBDIR:-$QTLOG_LOG_SUBDIR_DEFAULT}"
@@ -62,9 +63,18 @@ while [ $# -gt 0 ]; do
       shift
       ;;
     --no-git|--offline)
-      NO_GIT=1
-      shift
-      ;;
+        NO_GIT=1
+        shift
+        ;;
+    --mode)
+        shift
+        if [ $# -eq 0 ]; then
+            echo "qtlog: --mode requires one of: local|git|both" >&2
+            exit 1
+        fi
+        LOG_MODE="$1"
+        shift
+        ;;
     --dry-run)
       DRY_RUN=1
       shift
@@ -94,6 +104,12 @@ if [ "${#ARGS[@]}" -eq 0 ]; then
   echo "Try: qtlog.sh --help" >&2
   exit 1
 fi
+# --- Apply LOG_MODE ---
+case "$LOG_MODE" in
+  local) NO_GIT=1 ;;
+  git|both) NO_GIT=0 ;;
+esac
+
 
 MESSAGE="${ARGS[*]}"
 
