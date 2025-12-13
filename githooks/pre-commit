@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Pre-commit: block obvious secret material from entering git history.
+
+fail() { echo "ERROR: $*" >&2; exit 1; }
+
+# Files staged for commit (Added/Copied/Modified/Renamed)
+STAGED_FILES="$(git diff --cached --name-only --diff-filter=ACMR || true)"
+
+# 1) Hard-block common sensitive paths / filenames (even if someone tries git add -f)
+for f in $STAGED_FILES; do
+  [ "$f" = "githooks/pre-commit" ] && continue
+  # Skip scanning this hook (it contains detection regex literals)
+  case "$f" in
+    sec/*) fail "Refusing commit: staged file under sec/ ($f). sec/ must never be committed." ;;
+    *.key|*.pem|*.p12|*.pfx|*.crt|*.cer|*.der|*.jks|*.keystore|*.kdbx) fail "Refusing commit: staged certificate/key file ($f)." ;;
+    *.env|.env|.env.*|*env*.local) fail "Refusing commit: staged env file ($f)." ;;
+    *secret*|*token*|*apikey*|*api_key*) fail "Refusing commit: staged file name suggests secrets ($f)." ;;
+  esac
+done
+
+# 2) Content scan (best-effort, staged content only)
+#    If a line includes patterns that look like access tokens/keys, block.
+PATTERN='(BEGIN (RSA|EC|OPENSSH) PRIVATE KEY|AKIA[0-9A-Z]{16}|xox[baprs]-[0-9A-Za-z-]{10,}|ghp_[0-9A-Za-z]{20,}|AIzaSy[0-9A-Za-z_-]{20,}|-----BEGIN PRIVATE KEY-----)'
+for f in $STAGED_FILES; do
+  [ "$f" = "githooks/pre-commit" ] && continue
+  # Skip scanning this hook (it contains detection regex literals)
+  # Skip deleted files
+  git cat-file -e ":$f" 2>/dev/null || continue
+  if git show ":$f" | LC_ALL=C grep -E -n "$PATTERN" >/dev/null 2>&1; then
+    fail "Refusing commit: secret-like pattern detected in staged content ($f)."
+  fi
+done
+
+echo "pre-commit: OK"
