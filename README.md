@@ -1,3 +1,5 @@
+![version](https://img.shields.io/badge/version-v1.2.2-blue)
+
 ```# qtlog — Quantum Trek Logging
 ## Release Notes — v1.2.2
 
