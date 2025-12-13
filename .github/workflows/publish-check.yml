@@ -14,11 +14,13 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run publish guard (non-fatal)
+        env:
+          PUBLISH_ARGS: "--stamp-now --dry-run"
         id: publish_guard
         continue-on-error: true
         run: |
           set +e
-          ./publish.sh
+          bash publish.sh $PUBLISH_ARGS
           rc=$?
           echo "rc=$rc"
           echo "publish_guard_exit_code=$rc" >>"$GITHUB_OUTPUT"
