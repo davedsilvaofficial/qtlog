@@ -104,10 +104,16 @@ while [ $# -gt 0 ]; do
       ARGS+=("$@")
       break
       ;;
+  --export-check)
+    EXPORT_CHECK=1
+    shift
+    ;;
+
     -*)
-      echo "qtlog: Unknown option $1" >&2
-      exit 1
-      ;;
+        echo "qtlog: Unknown option $1" &>2
+        exit 1
+        ;;
+
     *)
       ARGS+=("$1")
       shift
@@ -125,6 +131,19 @@ if [ "$RECONCILE" -eq 1 ] && [ "$DRY_RUN" -eq 0 ]; then
   SYS_NOW="$(TZ=America/Toronto date '+%Y-%m-%d %H:%M:%S %Z' )";
   echo "RECONCILE:";
   echo "  System now : $SYS_NOW";
+  exit 0;
+fi
+
+# --- Export check helper (must run before message-required guard) ---
+if [ "${EXPORT_CHECK:-0}" -eq 1 ]; then
+  echo "Export check: scanning for non-/public references...";
+  BAD=$(git grep -n -I -E "(^|[^A-Za-z0-9])(~\/|\/home\/|\/data\/|\/storage\/|\/sdcard\/|\/projects\/|api\.notion\.com)" -- "public/**" "README.md" 2>/dev/null || true);
+  if [ -n "$BAD" ]; then
+    echo "Export blocked: references outside /public detected:";
+    echo "$BAD";
+    exit 1;
+  fi
+  echo "Export check passed: only /public content referenced.";
   exit 0;
 fi
 
@@ -196,3 +215,16 @@ if ! git push; then
 fi
 
 echo "qtlog: logged '$COMMIT_MSG' to $LOG_FILE"
+
+# --- Public export guard ---
+if [[ "${EXPORT_CHECK:-0}" == "1" ]]; then
+  echo "Export check: scanning for non-/public references..."
+  BAD=$(git grep -n -I -E "(^|[^A-Za-z0-9])(~\/|\/home\/|\/data\/|\/storage\/|\/sdcard\/|\/projects\/|api\.notion\.com)" -- "public/**" "README.md" 2>/dev/null || true);
+  if [[ -n "$BAD" ]]; then
+    echo "❌ Export blocked: references outside /public detected:"
+    echo "$BAD"
+    exit 1
+  fi
+  echo "✅ Export check passed: only /public content referenced."
+  exit 0
+fi
