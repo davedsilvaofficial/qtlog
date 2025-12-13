@@ -1,3 +1,25 @@
+# -------------------------------------------------------------------
+# GOVERNANCE NOTICE — EXECUTABLE SCRIPT
+#
+# This script is an operational control artifact.
+#
+# • It is listed and governed under:
+#   docs/SOFTWARE_INVENTORY.md
+#
+# • Any modification to this file:
+#   - MUST preserve its governance intent
+#   - MUST be reflected in SOFTWARE_INVENTORY.md
+#   - SHOULD be reviewed for disclosure, compliance, and audit impact
+#
+# • This script exists to reduce human error and memory dependence.
+#
+# • Accidental deletion, bypass, or silent modification may result in:
+#   - Loss of audit integrity
+#   - Disclosure control failure
+#   - Operational regression
+#
+# Treat as infrastructure, not convenience code.
+# -------------------------------------------------------------------
 #!/bin/bash
 export TZ=America/Toronto
 VERSION="1.2.2"
