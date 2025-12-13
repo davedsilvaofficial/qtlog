@@ -1,5 +1,6 @@
 #!/bin/bash
-VERSION="1.2.1"
+export TZ=America/Toronto
+VERSION="1.2.2"
 set -euo pipefail
 
 # --- Defaults -----------------------------------------------------
@@ -41,6 +42,9 @@ Options:
   --no-git        Skip git operations for this run
   --offline       Alias for --no-git
   --dry-run       Show what would happen, but don't modify files or git
+  --stamp-now        Print authoritative current time (ET) and exit
+  --reconcile        Print timestamp reconciliation (system/qtlog/git)
+
   -h, --help      Show this help
 EOF
 }
@@ -49,6 +53,9 @@ EOF
 NO_GIT="$QTLOG_DISABLE_GIT"
 DRY_RUN=0
 OVERRIDE_DEVICE=""
+STAMP_NOW=0
+RECONCILE=0
+
 
 ARGS=()
 while [ $# -gt 0 ]; do
@@ -75,6 +82,15 @@ while [ $# -gt 0 ]; do
         LOG_MODE="$1"
         shift
         ;;
+    --stamp-now)
+        STAMP_NOW=1
+        shift
+        ;;
+    --reconcile)
+        RECONCILE=1
+        shift
+        ;;
+
     --dry-run)
       DRY_RUN=1
       shift
@@ -98,6 +114,19 @@ while [ $# -gt 0 ]; do
       ;;
   esac
 done
+
+# --- Early helpers short-circuit ---
+if [ "$STAMP_NOW" -eq 1 ]; then
+  echo "STAMP_NOW: $(TZ=America/Toronto date '+%Y-%m-%d %H:%M:%S %Z' )";
+  [ "$RECONCILE" -eq 0 ] && exit 0;
+fi
+
+if [ "$RECONCILE" -eq 1 ] && [ "$DRY_RUN" -eq 0 ]; then
+  SYS_NOW="$(TZ=America/Toronto date '+%Y-%m-%d %H:%M:%S %Z' )";
+  echo "RECONCILE:";
+  echo "  System now : $SYS_NOW";
+  exit 0;
+fi
 
 if [ "${#ARGS[@]}" -eq 0 ]; then
   echo "qtlog: message is required" >&2
