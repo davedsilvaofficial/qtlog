@@ -17,7 +17,6 @@ This SOP defines:
 This SOP applies to all Quantum Trek projects using the logging automation:
 1. QT SEC & Investor Filing
 2. Master WBS & Systems Architecture
-3. Divorce & Trust Structure (lower priority)
 
 ---
 

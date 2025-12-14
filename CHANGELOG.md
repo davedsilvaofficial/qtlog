@@ -1,8 +1,9 @@
 # CHANGELOG
 
-Generated: 2025-12-14 0812 EST
+Generated: 2025-12-14 0816 EST
 
 ## Unreleased (since v1.2.3)
+- 2025-12-14 ae227af chore: add CHANGELOG.md and generator script for daily code review
 - 2025-12-13 04203d2 Enforce explicit yes/no confirmation before qtlog git commits
 - 2025-12-13 65402fd Harden governance: bind qtlog.sh to SOFTWARE_INVENTORY and add executable guard header
 - 2025-12-13 a8b6174 Add executable software inventory
