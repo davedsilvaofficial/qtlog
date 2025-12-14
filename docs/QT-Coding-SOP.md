@@ -295,6 +295,59 @@ Version 1.0 – 2025-12-06
 
 ## Execution Discipline — Changelog First
 
+## Execution Discipline — Explicit Choice Gating (Copy-Button Rule)
+
+
+**Rule:**  
+When presenting multiple actions, branches, or decisions, the assistant MUST present each choice inside a copy-ready block (single-action or numbered options). No implied execution.
+
+
+**Requirements:**
+
+- All choices MUST be isolated in copyable blocks.
+
+- Each block MUST represent one discrete action or decision.
+
+- No action proceeds unless the operator explicitly selects a block (e.g., “Execute Option 2”).
+
+- No mixed narration + instructions inside a block.
+
+- Default state is **NO ACTION**.
+
+
+**Rationale:**
+
+- Prevents accidental execution.
+
+- Reduces cognitive load.
+
+- Preserves operator authority.
+
+- Maintains auditability and governance integrity.
+
+
+**Enforcement:**
+
+- Any response that presents choices without copy-ready blocks constitutes SOP drift.
+
+- Operator may halt execution if this rule is violated.
+
+
+**Applies To:**
+
+- CLI commands
+
+- Git operations
+
+- Notion changes
+
+- Infrastructure edits
+
+- Multi-step plans
+
+- Refactors or migrations
+
+
 **Rule:** Before writing or editing code, first scan existing repo history to prevent duplicate work.
 
 **Required checks (in order):**
