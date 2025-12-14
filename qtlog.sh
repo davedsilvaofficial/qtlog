@@ -1,6 +1,7 @@
 # -------------------------------------------------------------------
 # GOVERNANCE NOTICE — EXECUTABLE SCRIPT
-#
+
+
 # This script is an operational control artifact.
 #
 # • It is listed and governed under:
@@ -19,6 +20,16 @@
 #   - Operational regression
 #
 # Treat as infrastructure, not convenience code.
+
+confirm_commit() {
+  echo
+  read -r -p "Commit log entry to git? [y/N]: " response
+  case "$response" in
+    [yY][eE][sS]|[yY]) return 0 ;;
+    *) echo "qtlog: commit skipped"; return 1 ;;
+  esac
+}
+
 # -------------------------------------------------------------------
 #!/bin/bash
 export TZ=America/Toronto
@@ -73,6 +84,7 @@ EOF
 
 # --- CLI parsing --------------------------------------------------
 NO_GIT="$QTLOG_DISABLE_GIT"
+WANT_COMMIT=0
 DRY_RUN=0
 OVERRIDE_DEVICE=""
 STAMP_NOW=0
@@ -229,7 +241,8 @@ fi
 
 git add "$LOG_FILE"
 COMMIT_MSG="[$DEVICE] $TODAY $NOW_FMT $MESSAGE"
-git commit -m "$COMMIT_MSG" >/dev/null 2>&1 || echo "qtlog: nothing to commit (maybe duplicate message?)"
+confirm_commit || exit 0
+    git commit -m "$COMMIT_MSG" >/dev/null 2>&1 || echo "qtlog: nothing to commit (maybe duplicate message?)"
 
 echo "qtlog: pushing..."
 if ! git push; then
