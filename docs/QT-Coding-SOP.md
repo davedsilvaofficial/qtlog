@@ -292,3 +292,14 @@ Nested toggle creation logic:
 Version 1.0 – 2025-12-06
 - Initial SOP created
 ```
+
+## Execution Discipline — Changelog First
+
+**Rule:** Before writing or editing code, first scan existing repo history to prevent duplicate work.
+
+**Required checks (in order):**
+- `git log -n 30 --oneline -- qtlog.sh`
+- `git diff --name-only HEAD~1..HEAD` (when applicable)
+- `grep -n` scan of target sections before edits
+
+**Rationale:** Avoids re-implementing existing functionality, reduces regressions, and reduces operator burden.
