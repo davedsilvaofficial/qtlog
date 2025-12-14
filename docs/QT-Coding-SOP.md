@@ -295,7 +295,165 @@ Version 1.0 – 2025-12-06
 
 ## Execution Discipline — Changelog First
 
+## Execution Discipline — PREVIEW vs EXECUTE State Enforcement
+
+**Rule:**
+The assistant MUST explicitly operate in one of two states: **PREVIEW** or **EXECUTE**.
+The default state is **PREVIEW**.
+
+---
+
+### PREVIEW State (Default)
+
+- Purpose: Analysis, inspection, design, validation.
+- Allowed:
+  - Code reading
+  - Diff review
+  - Interface design
+  - SOP drafting
+  - Risk identification
+- Prohibited:
+  - Code modification
+  - File writes
+  - Git actions
+  - Notion API calls
+- Language requirement:
+  - Assistant MUST state: “PREVIEW — no changes made.”
+
+---
+
+### EXECUTE State (Explicit Operator Authorization Required)
+
+- Entry condition:
+  - Operator must explicitly say **EXECUTE** and select a copy-ready action block.
+- Requirements after EXECUTE:
+  - Assistant MUST state expected code behavior.
+  - Assistant MUST either:
+    - Wait for a screenshot proving the result, OR
+    - Provide an explicit command to verify correctness.
+  - Assistant MUST stop and wait for verification input.
+
+---
+
+### Post-Execution Verification
+
+After EXECUTE, the assistant MUST:
+1. State what success looks like.
+2. Request verification evidence.
+3. Diagnose failures or confirm success.
+4. Present future steps in PREVIEW mode.
+
+---
+
+**Violation Handling:**
+- Proceeding without explicit EXECUTE authorization constitutes SOP drift.
+
+**Rationale:**
+- Prevents accidental changes
+- Enforces operator authority
+- Preserves auditability
+
+
 ## Execution Discipline — Explicit Choice Gating (Copy-Button Rule)
+
+## Execution Discipline — Copy-Button Exclusivity
+
+
+**Rule:**  
+All options presented by the assistant MUST be delivered inside copy-ready command blocks. Manual copying by the operator is prohibited.
+
+
+**Requirements:**
+
+- Every option MUST be enclosed in its own copy-button block.
+
+- No option may rely on manual text selection or re-typing.
+
+- No mixed prose + commands inside a block.
+
+- One block = one executable intent.
+
+- If a choice cannot be safely expressed as a copy-button block, it MUST NOT be presented.
+
+
+**Rationale:**
+
+- Prevents transcription errors.
+
+- Preserves execution integrity.
+
+- Maintains deterministic behavior.
+
+- Ensures auditability and reproducibility.
+
+
+**Enforcement:**
+
+- Any response presenting options outside copy-button blocks is an SOP violation.
+
+- Operator may halt execution immediately.
+
+- Assistant must restate options correctly before proceeding.
+
+
+## Execution Discipline — PREVIEW vs EXECUTE State Enforcement
+
+**Rule:**
+The assistant MUST explicitly operate in one of two states: **PREVIEW** or **EXECUTE**.
+The default state is **PREVIEW**.
+
+---
+
+### PREVIEW State (Default)
+
+- Purpose: Analysis, inspection, design, validation.
+- Allowed:
+  - Code reading
+  - Diff review
+  - Interface design
+  - SOP drafting
+  - Risk identification
+- Prohibited:
+  - Code modification
+  - File writes
+  - Git actions
+  - Notion API calls
+- Language requirement:
+  - Assistant MUST state: “PREVIEW — no changes made.”
+
+---
+
+### EXECUTE State (Explicit Operator Authorization Required)
+
+- Entry condition:
+  - Operator must explicitly say **EXECUTE** and select a copy-ready action block.
+- Requirements after EXECUTE:
+  - Assistant MUST state expected code behavior.
+  - Assistant MUST either:
+    - Wait for a screenshot proving the result, OR
+    - Provide an explicit command to verify correctness.
+  - Assistant MUST stop and wait for verification input.
+
+---
+
+### Post-Execution Verification
+
+After EXECUTE, the assistant MUST:
+1. State what success looks like.
+2. Request verification evidence.
+3. Diagnose failures or confirm success.
+4. Present future steps in PREVIEW mode.
+
+---
+
+**Violation Handling:**
+- Proceeding without explicit EXECUTE authorization constitutes SOP drift.
+
+**Rationale:**
+- Prevents accidental changes
+- Enforces operator authority
+- Preserves auditability
+
 
 
 **Rule:**  
