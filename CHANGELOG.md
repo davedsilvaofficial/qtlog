@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## Discipline (Daily Use)
+
+- Read `docs/QT-Coding-SOP.md` first when changing behavior or process.
+- This `CHANGELOG.md` is the daily audit anchor: every functional or governance change must be recorded.
+- If a step produced no proof/output, it is treated as not executed.
+- Generator (if used): `scripts/update-changelog.sh`
+
+
 Generated: 2025-12-14 0816 EST
 
 ## Unreleased (since v1.2.3)
@@ -99,4 +107,8 @@ Generated: 2025-12-14 0816 EST
 - 2025-12-05 0e6cf1a Second auto-push test - verifying repeat commit
 - 2025-12-05 1764e2b Test auto-push entry from updated script
 - 2025-12-05 137e6f4 Create README.md
+
+
+### Governance
+- Accepted operator-approved screenshot-to-text conversions (e.g., Gemini OCR) as valid proof (soft rule). Validation responsibility remains with the assistant.
 
