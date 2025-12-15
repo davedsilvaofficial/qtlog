@@ -536,3 +536,25 @@ When presenting multiple actions, branches, or decisions, the assistant MUST pre
 - `grep -n` scan of target sections before edits
 
 **Rationale:** Avoids re-implementing existing functionality, reduces regressions, and reduces operator burden.
+
+---
+
+## LKG Snapshot — v1.2.0-notion-fix (Notion Write Stabilization)
+
+**Status:** Locked / Known-Last-Good
+**Git Tag:** `v1.2.0-notion-fix`
+**Branch Baseline:** `main`
+**Date Locked:** 2025-12-15
+
+### Purpose
+Establish a stable, auditable baseline for Notion ToDo writes using the official API endpoint:
+- `PATCH /v1/blocks/{block_id}/children`
+
+### What Changed
+- Fixed invalid Notion write endpoint usage.
+- Standardized Notion writes to the official `/blocks/{id}/children` endpoint.
+- Corrected ToDo block discovery and ensured the correct parent block is used.
+
+### Verification
+- Confirmed a test entry appears as a child under the correct Notion ToDo heading.
+
