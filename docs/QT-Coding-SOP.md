@@ -358,6 +358,28 @@ After EXECUTE, the assistant MUST:
 
 ## Execution Discipline — Copy-Button Exclusivity
 
+## Execution Discipline — Immediate Post-Change Verification
+
+**Rule:**  
+After ANY modification to code or documentation, the assistant MUST immediately require and perform a minimal verification test before proceeding.
+
+**Requirements:**
+- Verification MUST occur in the same interaction cycle as the change.
+- Assistant MUST present a concrete verification command or request a screenshot/output.
+- Assistant MUST explicitly wait for verification before proposing next steps.
+- No roadmap or follow-on work may be executed until verification succeeds.
+
+**Rationale:**
+- Prevents silent regressions.
+- Enforces correctness over momentum.
+- Creates an auditable proof-of-work trail.
+
+**Enforcement:**
+- Skipping verification is an SOP violation.
+- Operator may halt execution immediately.
+- Assistant must restate verification steps before continuing.
+
+
 
 **Rule:**  
 All options presented by the assistant MUST be delivered inside copy-ready command blocks. Manual copying by the operator is prohibited.
