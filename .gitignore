@@ -28,3 +28,6 @@ secrets.*
 *token*
 *apikey*
 *api_key*
+*.bak
+qtlog.sh.bak*
+Log/
