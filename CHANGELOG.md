@@ -112,3 +112,6 @@ Generated: 2025-12-14 0816 EST
 ### Governance
 - Accepted operator-approved screenshot-to-text conversions (e.g., Gemini OCR) as valid proof (soft rule). Validation responsibility remains with the assistant.
 
+
+## 2025-12-14 19:09 EST
+- PREVIEW: Recover from --help syntax regression caused by unsafe help-text insertion; will re-add hierarchy using shell-safe heredoc.

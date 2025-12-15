@@ -1,3 +1,47 @@
+usage() {
+
+  cat <<'EOF'
+
+qtlog.sh — Quantum Trek Logging Utility
+
+
+
+Usage:
+
+  qtlog.sh [options] <message>
+
+
+
+Options:
+
+  --help            Show this help
+
+  --log             Log message (default)
+
+    local            Filesystem only
+
+    notion           Notion only
+
+    both             Filesystem + Notion
+
+  --todo <item>     Write item to Notion ToDo
+
+  --dry-run         Preview without side effects
+
+  --reconcile       Audit / reconciliation mode
+
+  --offline         Disable git operations
+
+
+
+Execution hierarchy is documented in code and CHANGELOG.
+
+EOF
+
+}
+
+
+#!/usr/bin/env bash
 # -----------------------------------------------------------------------------
 # GOVERNANCE & DISCIPLINE
 #
@@ -157,6 +201,9 @@ RECONCILE=0
 
 
 ARGS=()
+TODO_MODE=0
+TODO_ITEM=""
+
 while [ $# -gt 0 ]; do
   case "$1" in
     --device)
@@ -169,78 +216,75 @@ while [ $# -gt 0 ]; do
       shift
       ;;
     --no-git|--offline)
-    --todo)
-      TODO_MODE=1
+      NO_GIT=1
+      shift
       ;;
-        NO_GIT=1
-        shift
-        ;;
+    --todo)
+      shift
+      if [ $# -eq 0 ]; then
+        echo "qtlog: --todo requires an ITEM" >&2
+        exit 1
+      fi
+      TODO_MODE=1
+      TODO_ITEM="$1"
+      shift
+      ;;
     --mode)
-        shift
-        if [ $# -eq 0 ]; then
-            echo "qtlog: --mode requires one of: local|git|both" >&2
-            exit 1
-        fi
-        LOG_MODE="$1"
-        shift
-        ;;
+      shift
+      if [ $# -eq 0 ]; then
+        echo "qtlog: --mode requires one of: local|git|both" >&2
+        exit 1
+      fi
+      LOG_MODE="$1"
+      shift
+      ;;
     --stamp-now)
-        STAMP_NOW=1
-        shift
-        ;;
+      STAMP_NOW=1
+      shift
+      ;;
     --reconcile)
-        RECONCILE=1
-        shift
-        ;;
-
+      RECONCILE=1
+      shift
+      ;;
     --dry-run)
-    DRY_RUN=1
-    shift
-    ;;
-  --notion)
-    LOG_MODE=notion
-    shift
+      DRY_RUN=1
+      shift
+      ;;
+    --notion)
+      LOG_MODE=notion
+      shift
+      ;;
+    --local)
+      LOG_MODE=local
+      shift
+      ;;
+    --git)
+      LOG_MODE=git
+      shift
+      ;;
+    --both)
+      LOG_MODE=both
       shift
       ;;
     -h|--help)
-      print_help
+      usage
       exit 0
       ;;
     --)
       shift
-      ARGS+=("$@")
       break
       ;;
-  --export-check)
-    EXPORT_CHECK=1
-    shift
-    ;;
-
     -*)
-        echo "qtlog: Unknown option $1" &>2
-        exit 1
-        ;;
-
+      echo "qtlog: unknown option: $1" >&2
+      echo "Try: qtlog.sh --help" >&2
+      exit 1
+      ;;
     *)
       ARGS+=("$1")
       shift
       ;;
   esac
 done
-
-# --- Early helpers short-circuit ---
-if [ "$STAMP_NOW" -eq 1 ]; then
-  echo "STAMP_NOW: $(TZ=America/Toronto date '+%Y-%m-%d %H:%M:%S %Z' )";
-  [ "$RECONCILE" -eq 0 ] && exit 0;
-fi
-
-if [ "$RECONCILE" -eq 1 ] && [ "$DRY_RUN" -eq 0 ]; then
-  SYS_NOW="$(TZ=America/Toronto date '+%Y-%m-%d %H:%M:%S %Z' )";
-  echo "RECONCILE:";
-  echo "  System now : $SYS_NOW";
-  exit 0;
-fi
-
 # --- Export check helper (must run before message-required guard) ---
 if [ "${EXPORT_CHECK:-0}" -eq 1 ]; then
   echo "Export check: scanning for non-/public references...";
@@ -352,6 +396,10 @@ cd "$QTLOG_REPO_DIR"
 
 if [ "$NO_GIT" -ne 0 ]; then
   echo "qtlog: git disabled (NO_GIT=1, --no-git, or --offline)"
+  echo "qtlog: logged to $LOG_FILE (no git actions)"
+  exit 0
+fi
+
 
 echo "qtlog: pulling latest changes..."
 if ! git pull --rebase; then
