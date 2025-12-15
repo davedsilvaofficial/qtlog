@@ -1,3 +1,34 @@
+# -----------------------------------------------------------------------------
+# GOVERNANCE & DISCIPLINE
+#
+# This script is governed by:
+#   - docs/QT-Coding-SOP.md   (execution rules, change control, proof requirements)
+#   - CHANGELOG.md            (auditable history of all functional changes)
+#
+# Execution Gating:
+#   - Preview Mode is default
+#   - NO code change or git action occurs without the explicit word: Execute
+#   - Every executed step MUST produce unconditional output as proof
+#
+# If behavior here conflicts with the SOP or CHANGELOG, THIS FILE IS WRONG.
+# -----------------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
+# CHANGE CONTROL (MANDATORY)
+#
+# This file is governed by CHANGELOG.md
+#
+# Rules:
+# - Any functional change MUST be reflected in CHANGELOG.md
+# - Before editing: review CHANGELOG.md for regression risk
+# - Recovery is normal; undocumented recovery is NOT
+#
+# This header exists to prevent silent regression of:
+# - Notion logging behavior
+# - Git data-room hardening
+# - CLI/runtime switches
+# -----------------------------------------------------------------------------
+
 # -------------------------------------------------------------------
 # GOVERNANCE NOTICE — EXECUTABLE SCRIPT
 
@@ -55,6 +86,7 @@ if [ -f "$HOME/.qtlog_env" ]; then
 fi
 
 LOG_MODE="local"
+TODO_MODE=0
 # --- Effective settings -------------------------------------------
 QTLOG_REPO_DIR="${QTLOG_REPO_DIR:-$QTLOG_REPO_DIR_DEFAULT}"
 QTLOG_LOG_SUBDIR="${QTLOG_LOG_SUBDIR:-$QTLOG_LOG_SUBDIR_DEFAULT}"
@@ -79,10 +111,43 @@ Options:
   --reconcile        Print timestamp reconciliation (system/qtlog/git)
 
   -h, --help      Show this help
+
+Execution Mode Hierarchy:
+
+qtlog.sh
+├── --help
+│   └── Display command usage and execution model
+├── --log "<message>" (default)
+│   ├── local      → filesystem log only
+│   ├── notion     → Notion Log page only
+│   └── both       → filesystem + Notion Log
+├── --todo "<item>"
+│   └── Write to Notion ToDo page only
+├── --dry-run
+│   └── Preview execution without side effects
+├── --reconcile
+│   └── Time reconciliation / audit mode
+└── --offline / --no-git
+    └── Disable git operations
+
 EOF
 }
 
 # --- CLI parsing --------------------------------------------------
+
+# Execution Mode Hierarchy (Operator-Facing)
+# qtlog.sh
+# ├── --help
+# ├── --log (default)
+# │   ├── local | notion | both
+# ├── --todo
+# ├── --dry-run
+# ├── --reconcile
+# └── --offline / --no-git
+#
+# NOTE: This hierarchy is duplicated in --help output intentionally.
+# Any change here MUST be reflected in help and CHANGELOG.
+
 NO_GIT="$QTLOG_DISABLE_GIT"
 WANT_COMMIT=0
 DRY_RUN=0
@@ -104,6 +169,9 @@ while [ $# -gt 0 ]; do
       shift
       ;;
     --no-git|--offline)
+    --todo)
+      TODO_MODE=1
+      ;;
         NO_GIT=1
         shift
         ;;
@@ -126,7 +194,12 @@ while [ $# -gt 0 ]; do
         ;;
 
     --dry-run)
-      DRY_RUN=1
+    DRY_RUN=1
+    shift
+    ;;
+  --notion)
+    LOG_MODE=notion
+    shift
       shift
       ;;
     -h|--help)
@@ -188,8 +261,10 @@ if [ "${#ARGS[@]}" -eq 0 ]; then
 fi
 # --- Apply LOG_MODE ---
 case "$LOG_MODE" in
-  local) NO_GIT=1 ;;
-  git|both) NO_GIT=0 ;;
+  local)  NO_GIT=1 ;;
+  git)    NO_GIT=0 ;;
+  notion) NO_GIT=1 ;;
+  both)   NO_GIT=0 ;;
 esac
 
 
@@ -225,14 +300,58 @@ fi
 ENTRY="[$DEVICE] $NOW_FMT $MESSAGE"
 echo "$ENTRY" >> "$LOG_FILE"
 
+if [ "$LOG_MODE" = "notion" ] || [ "$LOG_MODE" = "both" ]; then
+
+write_notion_todo() {
+  [ -z "${NOTION_API_KEY:-}" ] && return 0
+  [ -z "${NOTION_TODO_PAGE_ID:-}" ] && return 0  # multi-page routing (Todo page)
+
+  local content="$1"
+
+  curl -s https://api.notion.com/v1/blocks/${NOTION_TODO_PAGE_ID}/children \
+    -H "Authorization: Bearer $NOTION_API_KEY" \
+    -H "Notion-Version: 2022-06-28" \
+    -H "Content-Type: application/json" \
+    -d "{\"children\": [{\"object\": \"block\", \"type\": \"paragraph\", \"paragraph\": {\"rich_text\": [{\"type\": \"text\", \"text\": {\"content\": \"$content\"}}]}}]}" \
+    > /dev/null
+}
+
+write_notion() {
+
+if [ "$TODO_MODE" -eq 1 ]; then
+  write_notion_todo "$ENTRY"
+fi
+
+  [ -z "${NOTION_API_KEY:-}" ] && return 0
+  [ -z "${NOTION_LOG_PAGE_ID:-}" ] && return 0  # multi-page routing (Log page)
+
+  local content="$ENTRY"
+
+  curl -s https://api.notion.com/v1/blocks/${NOTION_LOG_PAGE_ID}/children \
+    -H "Authorization: Bearer $NOTION_API_KEY" \
+    -H "Notion-Version: 2022-06-28" \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"children\": [{
+        \"object\": \"block\",
+        \"type\": \"paragraph\",
+        \"paragraph\": {
+          \"rich_text\": [{
+            \"type\": \"text\",
+            \"text\": { \"content\": \"$content\" }
+          }]
+        }
+      }]
+    }" >/dev/null
+}
+  write_notion
+fi
+
 # --- Git sync -----------------------------------------------------
 cd "$QTLOG_REPO_DIR"
 
 if [ "$NO_GIT" -ne 0 ]; then
   echo "qtlog: git disabled (NO_GIT=1, --no-git, or --offline)"
-  echo "qtlog: logged '$ENTRY' to $LOG_FILE (no git actions)"
-  exit 0
-fi
 
 echo "qtlog: pulling latest changes..."
 if ! git pull --rebase; then
