@@ -285,6 +285,111 @@ while [ $# -gt 0 ]; do
       ;;
   esac
 done
+
+# --- BEGIN TODO DISPATCH (early exit) ---
+if [ "$TODO_MODE" -eq 1 ]; then
+  # Guard rails: must have Notion integration configured
+  TODO_PAGE_ID="${NOTION_TODO_PAGE_ID}"
+  if [ -z "$TODO_PAGE_ID" ]; then
+    echo "qtlog: TODO write failed — NOTION_TODO_PAGE_ID is empty at runtime" >&2
+    exit 1
+  fi
+  if [ -z "${NOTION_API_KEY:-}" ] || [ -z "${NOTION_TODO_PAGE_ID:-}" ]; then
+    echo "qtlog: --todo requires NOTION_API_KEY and NOTION_TODO_PAGE_ID in .env" >&2
+    exit 1
+  fi
+
+  TS_ET="$(TZ=America/Toronto date '+%Y-%m-%d %H%M')"
+
+  # If the item already starts with an ET timestamp, do not double-prefix it.
+  if [[ "$TODO_ITEM" =~ ^20[0-9]{2}-[0-9]{2}-[0-9]{2}[[:space:]]?[0-9]{4} ]]; then
+    CONTENT="$TODO_ITEM"
+  else
+    CONTENT="$TS_ET $TODO_ITEM"
+  fi
+
+  if [ "${DRY_RUN:-0}" -ne 0 ]; then
+    echo "qtlog DRY-RUN (todo)"
+    echo "  Notion ToDo page id: ${NOTION_TODO_PAGE_ID}"
+    echo "  Content: $CONTENT"
+  echo "  DRY-RUN OK: Notion write skipped (dry-run confirmed)"
+    exit 0
+  fi
+
+  
+  # Auto-discover the "ToDo" heading block (must be a block id, not page id)
+  TODO_PARENT_ID="$(
+    python - "$NOTION_TODO_PAGE_ID" "$NOTION_API_KEY" <<'PYIN'
+import sys, json, urllib.request
+page_id, key = sys.argv[1], sys.argv[2]
+url = f"https://api.notion.com/v1/blocks/{page_id}/children?page_size=100"
+req = urllib.request.Request(url, headers={
+  "Authorization": f"Bearer {key}",
+  "Notion-Version": "2022-06-28"
+})
+data = json.loads(urllib.request.urlopen(req).read().decode("utf-8"))
+for blk in data.get("results", []):
+  t = blk.get("type")
+  payload = blk.get(t, {}) if t else {}
+  rts = payload.get("rich_text", [])
+  txt = "".join(rt.get("plain_text","") for rt in rts).strip()
+  if t in ("heading_1","heading_2","heading_3") and txt == "ToDo":
+    print(blk.get("id",""))
+    sys.exit(0)
+print("")
+PYIN
+  )"
+
+  if [ -z "$TODO_PARENT_ID" ]; then
+    echo "qtlog: ERROR: Could not auto-discover ToDo heading block" >&2
+    exit 1
+  fi
+
+  echo "qtlog: Auto-discovered ToDo block id: $TODO_PARENT_ID" >&2
+URL="https://api.notion.com/v1/blocks/$(echo ${TODO_PARENT_ID} )/children"
+JSON=$(cat <<EOF
+{
+  "children": [
+    {
+      "object": "block",
+      "type": "paragraph",
+      "paragraph": {
+        "rich_text": [
+          { "type": "text", "text": { "content": "$CONTENT" } }
+        ]
+      }
+    }
+  ]
+}
+EOF
+)
+
+  RESP="$(curl -sS -w '\nHTTP_CODE=%{http_code}\n' \
+    -X PATCH "$URL" \
+    -H "Authorization: Bearer ${NOTION_API_KEY}" \
+    -H "Notion-Version: 2022-06-28" \
+    -H "Content-Type: application/json" \
+    --data "$JSON")"
+
+  HTTP_CODE="$(printf '%s' "$RESP" | sed -n 's/^HTTP_CODE=//p' | tail -n 1)"
+
+  if [ -z "$HTTP_CODE" ]; then
+    echo "qtlog: TODO write failed (no HTTP code captured)" >&2
+    printf '%s\n' "$RESP" >&2
+    exit 1
+  fi
+
+  if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+    echo "qtlog: TODO write failed (HTTP $HTTP_CODE)" >&2
+    printf '%s\n' "$RESP" >&2
+    exit 1
+  fi
+
+  echo "qtlog: TODO written to Notion"
+  exit 0
+fi
+# --- END TODO DISPATCH (early exit) ---
+
 # --- Export check helper (must run before message-required guard) ---
 if [ "${EXPORT_CHECK:-0}" -eq 1 ]; then
   echo "Export check: scanning for non-/public references...";
@@ -352,7 +457,7 @@ write_notion_todo() {
 
   local content="$1"
 
-  curl -s https://api.notion.com/v1/blocks/${NOTION_TODO_PAGE_ID}/children \
+  curl -s -X PATCH -X PATCH https://api.notion.com/v1/blocks/$(echo ${TODO_PARENT_ID} )/children \
     -H "Authorization: Bearer $NOTION_API_KEY" \
     -H "Notion-Version: 2022-06-28" \
     -H "Content-Type: application/json" \
@@ -363,6 +468,10 @@ write_notion_todo() {
 write_notion() {
 
 if [ "$TODO_MODE" -eq 1 ]; then
+  CONTENT="$TODO_ITEM"
+  write_notion "todo" "$CONTENT"
+  echo "qtlog: This is it → written to Notion ToDo"
+  exit 0
   write_notion_todo "$ENTRY"
 fi
 
@@ -371,7 +480,7 @@ fi
 
   local content="$ENTRY"
 
-  curl -s https://api.notion.com/v1/blocks/${NOTION_LOG_PAGE_ID}/children \
+  curl -s -X PATCH -X PATCH https://api.notion.com/v1/blocks/$(echo ${TODO_PARENT_ID} )/children \
     -H "Authorization: Bearer $NOTION_API_KEY" \
     -H "Notion-Version: 2022-06-28" \
     -H "Content-Type: application/json" \
