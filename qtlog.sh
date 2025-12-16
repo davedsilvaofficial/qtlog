@@ -201,6 +201,7 @@ DRY_RUN=0
 OVERRIDE_DEVICE=""
 STAMP_NOW=0
 RECONCILE=0
+LKG_MODE=0
 
 
 ARGS=()
@@ -251,6 +252,11 @@ while [ $# -gt 0 ]; do
       ;;
     --dry-run)
       DRY_RUN=1
+      shift
+      ;;
+
+    --lkg)
+      LKG_MODE=1
       shift
       ;;
     --notion)
