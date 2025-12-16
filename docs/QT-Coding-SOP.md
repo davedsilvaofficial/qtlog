@@ -571,3 +571,24 @@ This file contains:
 - NOTION_TODO_PAGE_ID
 
 If Notion logging or Todo writing fails, inspect this file first.
+
+---
+
+
+## Canonical Notion Entry Invariant (CEI)
+
+All Notion entries written by **qtlog** — including **Log** and **ToDo** — MUST satisfy the following invariant:
+
+### Structural requirements
+- The entry **MUST** be a **toggle block**
+- The toggle title **MUST** use the format:
+  `YYYY-MM-DD HHMM [Device] <description>`
+- The toggle **MUST** contain child paragraphs:
+  - Work done
+  - Notes
+  - Next steps
+
+### Scope
+- **Log** and **ToDo** differ only by **parent container**.
+- Any deviation is considered **structural drift**.
+
