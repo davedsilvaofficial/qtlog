@@ -558,3 +558,16 @@ Establish a stable, auditable baseline for Notion ToDo writes using the official
 ### Verification
 - Confirmed a test entry appears as a child under the correct Notion ToDo heading.
 
+
+## QT Environment Configuration
+
+All QT automation scripts load environment variables from:
+
+    ~/.config/qt/.env
+
+This file contains:
+- NOTION_API_KEY
+- NOTION_LOG_PAGE_ID
+- NOTION_TODO_PAGE_ID
+
+If Notion logging or Todo writing fails, inspect this file first.

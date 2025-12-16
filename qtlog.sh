@@ -1,3 +1,6 @@
+# ENV FILE (authoritative): ~/.config/qt/.env
+# Contains: NOTION_API_KEY, NOTION_LOG_PAGE_ID, NOTION_TODO_PAGE_ID
+
 usage() {
 
   cat <<'EOF'
@@ -446,59 +449,85 @@ if ! mkdir -p "$QTLOG_LOG_DIR"; then
 fi
 
 # --- Write log entry ----------------------------------------------
-ENTRY="[$DEVICE] $NOW_FMT $MESSAGE"
+ENTRY="$NOW_FMT [$DEVICE] $MESSAGE"
 echo "$ENTRY" >> "$LOG_FILE"
 
-if [ "$LOG_MODE" = "notion" ] || [ "$LOG_MODE" = "both" ]; then
-
-write_notion_todo() {
+# --- Notion helpers ---
+write_notion() {
   [ -z "${NOTION_API_KEY:-}" ] && return 0
-  [ -z "${NOTION_TODO_PAGE_ID:-}" ] && return 0  # multi-page routing (Todo page)
+  [ -z "${NOTION_LOG_PAGE_ID:-}" ] && return 0
 
-  local content="$1"
+  local entry="$ENTRY"
+  local today
+  today="$(TZ=America/Toronto date '+%Y-%m-%d')"
 
-  curl -s -X PATCH -X PATCH https://api.notion.com/v1/blocks/$(echo ${TODO_PARENT_ID} )/children \
+  # 1) Locate the H1 "Log" under the QT - Log page
+  local log_h1_id
+  log_h1_id="$(
+    curl -s "https://api.notion.com/v1/blocks/${NOTION_LOG_PAGE_ID}/children?page_size=100" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28" | \
+    jq -r '.results[]
+      | select(.type=="heading_1")
+      | select((.heading_1.rich_text[0].plain_text // "")=="Log")
+      | .id' | head -n1
+  )"
+
+  # Fallback: if we can't find the H1 for some reason, write at page root (still better than dropping)
+  if [ -z "${log_h1_id:-}" ]; then
+    curl -s -X PATCH "https://api.notion.com/v1/blocks/${NOTION_LOG_PAGE_ID}/children" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28" \
+      -H "Content-Type: application/json" \
+      -d "{\"children\":[{\"object\":\"block\",\"type\":\"paragraph\",\"paragraph\":{\"rich_text\":[{\"type\":\"text\",\"text\":{\"content\":\"${entry}\"}}]}}]}" \
+      > /dev/null
+    return 0
+  fi
+
+  # 2) Find today's toggle under H1, or create it
+  local today_toggle_id
+  today_toggle_id="$(
+    curl -s "https://api.notion.com/v1/blocks/${log_h1_id}/children?page_size=100" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28" | \
+    jq -r --arg t "$today" '.results[]
+      | select(.type=="toggle")
+      | select((.toggle.rich_text[0].plain_text // "")==$t)
+      | .id' | head -n1
+  )"
+
+  if [ -z "${today_toggle_id:-}" ]; then
+    today_toggle_id="$(
+      curl -s -X PATCH "https://api.notion.com/v1/blocks/${log_h1_id}/children" \
+        -H "Authorization: Bearer $NOTION_API_KEY" \
+        -H "Notion-Version: 2022-06-28" \
+        -H "Content-Type: application/json" \
+        -d "{\"children\":[{\"object\":\"block\",\"type\":\"toggle\",\"toggle\":{\"rich_text\":[{\"type\":\"text\",\"text\":{\"content\":\"${today}\"}}],\"children\":[]}}]}" | \
+      jq -r '.results[0].id'
+    )"
+  fi
+
+  [ -z "${today_toggle_id:-}" ] && return 1
+
+  # 3) Append entry under today's toggle
+  curl -s -X PATCH "https://api.notion.com/v1/blocks/${today_toggle_id}/children" \
     -H "Authorization: Bearer $NOTION_API_KEY" \
     -H "Notion-Version: 2022-06-28" \
     -H "Content-Type: application/json" \
-    -d "{\"children\": [{\"object\": \"block\", \"type\": \"paragraph\", \"paragraph\": {\"rich_text\": [{\"type\": \"text\", \"text\": {\"content\": \"$content\"}}]}}]}" \
+    -d "{\"children\":[{\"object\":\"block\",\"type\":\"paragraph\",\"paragraph\":{\"rich_text\":[{\"type\":\"text\",\"text\":{\"content\":\"${entry}\"}}]}}]}" \
     > /dev/null
 }
 
-write_notion() {
 
-if [ "$TODO_MODE" -eq 1 ]; then
-  CONTENT="$TODO_ITEM"
-  write_notion "todo" "$CONTENT"
-  echo "qtlog: This is it → written to Notion ToDo"
-  exit 0
-  write_notion_todo "$ENTRY"
-fi
 
-  [ -z "${NOTION_API_KEY:-}" ] && return 0
-  [ -z "${NOTION_LOG_PAGE_ID:-}" ] && return 0  # multi-page routing (Log page)
-
-  local content="$ENTRY"
-
-  curl -s -X PATCH -X PATCH https://api.notion.com/v1/blocks/$(echo ${TODO_PARENT_ID} )/children \
-    -H "Authorization: Bearer $NOTION_API_KEY" \
-    -H "Notion-Version: 2022-06-28" \
-    -H "Content-Type: application/json" \
-    -d "{
-      \"children\": [{
-        \"object\": \"block\",
-        \"type\": \"paragraph\",
-        \"paragraph\": {
-          \"rich_text\": [{
-            \"type\": \"text\",
-            \"text\": { \"content\": \"$content\" }
-          }]
-        }
-      }]
-    }" >/dev/null
-}
+# --- Notion sync ---
+if [ "$LOG_MODE" = "notion" ] || [ "$LOG_MODE" = "both" ]; then
   write_notion
 fi
+
+
+
+
 
 # --- Git sync -----------------------------------------------------
 cd "$QTLOG_REPO_DIR"
