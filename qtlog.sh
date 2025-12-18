@@ -114,6 +114,11 @@ export TZ=America/Toronto
 VERSION="1.2.2"
 set -euo pipefail
 
+# --- DEVICE GUARD (nounset-safe; required by SOP) ---
+: "${DEVICE:=$(getprop ro.product.model 2>/dev/null || true)}"
+[ -n "$DEVICE" ] || DEVICE="Device"
+# --- END DEVICE GUARD ---
+
 # --- Defaults -----------------------------------------------------
 QTLOG_REPO_DIR_DEFAULT="$HOME/qtlog_repo"
 QTLOG_LOG_SUBDIR_DEFAULT="Log"
@@ -296,7 +301,7 @@ while [ $# -gt 0 ]; do
 done
 
 # --- BEGIN TODO DISPATCH (early exit) ---
-if [ "$TODO_MODE" -eq 1 ]; then
+if [ "${TODO_MODE:-0}" -eq 1 ]; then
   # Guard rails: must have Notion integration configured
   TODO_PAGE_ID="${NOTION_TODO_PAGE_ID}"
   if [ -z "$TODO_PAGE_ID" ]; then
@@ -310,42 +315,66 @@ if [ "$TODO_MODE" -eq 1 ]; then
 
   TS_ET="$(TZ=America/Toronto date '+%Y-%m-%d %H%M')"
 
+# --- CEI TITLE (authoritative format) ---
+# Format: YYYY-MM-DD HHMM 🟩 Your text [DEVICE]
+STATUS_EMOJI="${STATUS_EMOJI:-🟦}"
+
+CEI_TITLE="$TS_ET $STATUS_EMOJI $TODO_ITEM [$DEVICE]"
+
+# --- END CEI TITLE ---
+  DATE_ONLY="$(TZ=America/Toronto date '+%Y-%m-%d')"
+
+  # Ensure DEVICE is set (nounset-safe). Device is ALWAYS appended after your text.
+  if [ -z "${DEVICE:-}" ]; then
+    DEVICE="$(getprop ro.product.model 2>/dev/null | tr ' ' '_' )"
+    [ -n "$DEVICE" ] || DEVICE="Device"
+  fi
+
+  # Status emoji (override with STATUS_EMOJI=... in env)
+  STATUS_EMOJI="${STATUS_EMOJI:-🟦}"
+
   # If the item already starts with an ET timestamp, do not double-prefix it.
-  if [[ "$TODO_ITEM" =~ ^20[0-9]{2}-[0-9]{2}-[0-9]{2}[[:space:]]?[0-9]{4} ]]; then
+  if [[ "$TODO_ITEM" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}[[:space:]]?[0-9]{4}[[:space:]] ]]; then
     CONTENT="$TODO_ITEM"
+    USER_TEXT="$TODO_ITEM"
   else
     CONTENT="$TS_ET $TODO_ITEM"
+    USER_TEXT="$TODO_ITEM"
+  fi
+
+  # CEI title: YYYY-MM-DD HHMM <emoji> <your text> [DEVICE]
+  if [[ "$USER_TEXT" =~ ^([0-9]{4}-[0-9]{2}-[0-9]{2})[[:space:]]?([0-9]{4})[[:space:]]+(.*)$ ]]; then
+    CEI_TITLE="${BASH_REMATCH[1]} ${BASH_REMATCH[2]} ${STATUS_EMOJI} ${BASH_REMATCH[3]} [$DEVICE]"
+  else
+    CEI_TITLE="$TS_ET ${STATUS_EMOJI} $USER_TEXT [$DEVICE]"
   fi
 
   if [ "${DRY_RUN:-0}" -ne 0 ]; then
     echo "qtlog DRY-RUN (todo)"
     echo "  Notion ToDo page id: ${NOTION_TODO_PAGE_ID}"
     echo "  Content: $CONTENT"
-  echo "  DRY-RUN OK: Notion write skipped (dry-run confirmed)"
+    echo "  CEI_TITLE: $CEI_TITLE"
+    echo "  DRY-RUN OK: Notion write skipped (dry-run confirmed)"
     exit 0
   fi
 
-  
-  # Auto-discover the "ToDo" heading block (must be a block id, not page id)
+  # Auto-discover the "ToDo" heading block id (must be a block id, not page id)
   TODO_PARENT_ID="$(
     python - "$NOTION_TODO_PAGE_ID" "$NOTION_API_KEY" <<'PYIN'
 import sys, json, urllib.request
 page_id, key = sys.argv[1], sys.argv[2]
 url = f"https://api.notion.com/v1/blocks/{page_id}/children?page_size=100"
-req = urllib.request.Request(url, headers={
-  "Authorization": f"Bearer {key}",
-  "Notion-Version": "2022-06-28"
-})
+req = urllib.request.Request(url, headers={"Authorization": f"Bearer {key}", "Notion-Version": "2022-06-28"})
 data = json.loads(urllib.request.urlopen(req).read().decode("utf-8"))
+hid = ""
 for blk in data.get("results", []):
-  t = blk.get("type")
-  payload = blk.get(t, {}) if t else {}
-  rts = payload.get("rich_text", [])
-  txt = "".join(rt.get("plain_text","") for rt in rts).strip()
-  if t in ("heading_1","heading_2","heading_3") and txt == "ToDo":
-    print(blk.get("id",""))
-    sys.exit(0)
-print("")
+    t = blk.get("type")
+    if t in ("heading_1","heading_2","heading_3"):
+        rt = blk.get(t, {}).get("rich_text", [])
+        if rt and (rt[0].get("plain_text","").strip().lower() == "todo"):
+            hid = blk.get("id","")
+            break
+print(hid)
 PYIN
   )"
 
@@ -353,26 +382,112 @@ PYIN
     echo "qtlog: ERROR: Could not auto-discover ToDo heading block" >&2
     exit 1
   fi
-
   echo "qtlog: Auto-discovered ToDo block id: $TODO_PARENT_ID" >&2
-URL="https://api.notion.com/v1/blocks/$(echo ${TODO_PARENT_ID} )/children"
-JSON=$(cat <<EOF
+
+  # Helper: ensure a pinned sentinel exists so we can always insert newest "at top" (after it).
+  ensure_pin() {
+    # $1 = parent_block_id, $2 = pin_title
+    local PARENT="$1"
+    local PIN_TITLE="$2"
+
+    local DATA
+    DATA="$(curl -sS \
+      -H "Authorization: Bearer ${NOTION_API_KEY}" \
+      -H "Notion-Version: 2022-06-28" \
+      "https://api.notion.com/v1/blocks/${PARENT}/children?page_size=50")"
+
+    local PIN_ID
+    PIN_ID="$(printf '%s' "$DATA" | jq -r --arg t "$PIN_TITLE" '
+      [.results[] | select(.type=="toggle") | select((.toggle.rich_text[0].plain_text // "")==$t)][0].id // ""')"
+
+    if [ -n "$PIN_ID" ]; then
+      echo "$PIN_ID"
+      return 0
+    fi
+
+    # Create pin sentinel
+    local JSON RESP NEWID
+    JSON="$(cat <<EOF
+{"children":[{"object":"block","type":"toggle","toggle":{"rich_text":[{"type":"text","text":{"content":"$PIN_TITLE"}}],"children":[]}}]}
+EOF
+)"
+    RESP="$(curl -sS -w '\nHTTP_CODE=%{http_code}\n' \
+      -X PATCH "https://api.notion.com/v1/blocks/${PARENT}/children" \
+      -H "Authorization: Bearer ${NOTION_API_KEY}" \
+      -H "Notion-Version: 2022-06-28" \
+      -H "Content-Type: application/json" \
+      --data "$JSON")"
+    local HTTP_CODE
+    HTTP_CODE="$(printf '%s' "$RESP" | sed -n 's/^HTTP_CODE=//p' | tail -n 1)"
+    if [ -z "$HTTP_CODE" ] || [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+      echo "qtlog: PIN create failed (HTTP $HTTP_CODE)" >&2
+      printf '%s\n' "$RESP" >&2
+      exit 1
+    fi
+    NEWID="$(printf '%s' "$RESP" | sed '/^HTTP_CODE=/d' | jq -r '.results[0].id // ""')"
+    echo "$NEWID"
+  }
+
+  # Ensure DATE toggle exists under ToDo heading. Insert "near top" by using a pin sentinel.
+  TODO_PIN_ID="$(ensure_pin "$TODO_PARENT_ID" "📌 PIN")"
+
+  DATE_ID="$(curl -sS \
+    -H "Authorization: Bearer ${NOTION_API_KEY}" \
+    -H "Notion-Version: 2022-06-28" \
+    "https://api.notion.com/v1/blocks/${TODO_PARENT_ID}/children?page_size=100" \
+    | jq -r --arg d "$DATE_ONLY" '
+      [.results[] | select(.type=="toggle") | select((.toggle.rich_text[0].plain_text // "")==$d)][0].id // ""'
+  )"
+
+  if [ -z "$DATE_ID" ]; then
+    # Create date toggle after PIN (so it sits at the top section)
+    JSON="$(cat <<EOF
+{"after":"$TODO_PIN_ID","children":[{"object":"block","type":"toggle","toggle":{"rich_text":[{"type":"text","text":{"content":"$DATE_ONLY"}}],"children":[]}}]}
+EOF
+)"
+    RESP="$(curl -sS -w '\nHTTP_CODE=%{http_code}\n' \
+      -X PATCH "https://api.notion.com/v1/blocks/${TODO_PARENT_ID}/children" \
+      -H "Authorization: Bearer ${NOTION_API_KEY}" \
+      -H "Notion-Version: 2022-06-28" \
+      -H "Content-Type: application/json" \
+      --data "$JSON")"
+    HTTP_CODE="$(printf '%s' "$RESP" | sed -n 's/^HTTP_CODE=//p' | tail -n 1)"
+    if [ -z "$HTTP_CODE" ] || [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+      echo "qtlog: DATE create failed (HTTP $HTTP_CODE)" >&2
+      printf '%s\n' "$RESP" >&2
+      exit 1
+    fi
+    DATE_ID="$(printf '%s' "$RESP" | sed '/^HTTP_CODE=/d' | jq -r '.results[0].id // ""')"
+  fi
+  echo "qtlog: Using date toggle id: $DATE_ID ($DATE_ONLY)" >&2
+
+  # Ensure a pin exists inside the DATE toggle too, so newest CEI goes to top (after that pin).
+  DATE_PIN_ID="$(ensure_pin "$DATE_ID" "📌 TOP")"
+
+  # Create CEI entry (toggle with 3 toggle children) after DATE pin so it appears at the top
+  URL="https://api.notion.com/v1/blocks/${DATE_ID}/children"
+  JSON="$(cat <<EOF
 {
+  "after": "$DATE_PIN_ID",
   "children": [
     {
       "object": "block",
-      "type": "paragraph",
-      "paragraph": {
+      "type": "toggle",
+      "toggle": {
         "rich_text": [
-          { "type": "text", "text": { "content": "$CONTENT" } }
+          { "type": "text", "text": { "content": "$CEI_TITLE" } }
+        ],
+        "children": [
+          { "object": "block", "type": "toggle", "toggle": { "rich_text": [ { "type": "text", "text": { "content": "Work done" } } ], "children": [] } },
+          { "object": "block", "type": "toggle", "toggle": { "rich_text": [ { "type": "text", "text": { "content": "Notes" } } ], "children": [] } },
+          { "object": "block", "type": "toggle", "toggle": { "rich_text": [ { "type": "text", "text": { "content": "Next steps" } } ], "children": [] } }
         ]
       }
     }
   ]
 }
 EOF
-)
-
+)"
   RESP="$(curl -sS -w '\nHTTP_CODE=%{http_code}\n' \
     -X PATCH "$URL" \
     -H "Authorization: Bearer ${NOTION_API_KEY}" \
@@ -381,13 +496,11 @@ EOF
     --data "$JSON")"
 
   HTTP_CODE="$(printf '%s' "$RESP" | sed -n 's/^HTTP_CODE=//p' | tail -n 1)"
-
   if [ -z "$HTTP_CODE" ]; then
     echo "qtlog: TODO write failed (no HTTP code captured)" >&2
     printf '%s\n' "$RESP" >&2
     exit 1
   fi
-
   if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
     echo "qtlog: TODO write failed (HTTP $HTTP_CODE)" >&2
     printf '%s\n' "$RESP" >&2
@@ -398,6 +511,7 @@ EOF
   exit 0
 fi
 # --- END TODO DISPATCH (early exit) ---
+
 
 # --- Export check helper (must run before message-required guard) ---
 if [ "${EXPORT_CHECK:-0}" -eq 1 ]; then
