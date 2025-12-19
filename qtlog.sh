@@ -113,7 +113,7 @@ confirm_commit() {
 # -------------------------------------------------------------------
 #!/bin/bash
 export TZ=America/Toronto
-VERSION="1.2.2"
+VERSION="1.2.4"
 set -euo pipefail
 
 # --- DEVICE GUARD (nounset-safe; required by SOP) ---
@@ -539,6 +539,12 @@ verify_log_structure() {
   local verify_now
   verify_now="$(TZ=America/Toronto date '+%Y-%m-%d %H%M ET')"
   printf "VERIFY_TIME=%s\n" "$verify_now"
+  # CI-safe / operator-safe: if Notion env is missing, treat verify as a read-only clock proof
+  if [ -z "${NOTION_API_KEY:-}" ] || [ -z "${NOTION_LOG_PAGE_ID:-}" ]; then
+    echo "VERIFY_SKIP=missing_env"
+    return 0
+  fi
+
   local today log_h1_id day_id h1_first day_first day_second
 
   today="$(TZ=America/Toronto date '+%Y-%m-%d')"

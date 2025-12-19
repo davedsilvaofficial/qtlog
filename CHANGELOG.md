@@ -36,6 +36,13 @@ Generated: 2025-12-14 0816 EST
 - 2025-12-13 0097e8c test(hook): safe content
 - 2025-12-13 1f550fb chore(repo): add pre-commit hook and public export README
 
+
+## v1.2.4
+- 2025-12-19 feat(verify): add --verify read-only Notion newest-at-top anchor check; prints VERIFY_TIME (ET)
+- 2025-12-19 chore(notion): remove DEBUG_NOTION gating (debug env no longer required)
+- 2025-12-19 docs(help): document --verify in usage()/help output
+- 2025-12-19 ci: add GitHub Actions workflow to smoke-test --help and --verify
+
 ## v1.2.3
 - 2025-12-13 3e7b4bb feat(integrity): enforce pre-export scan blocking non-/public references
 - 2025-12-13 4b4eb86 docs(security): add explicit public export policy (public/ only)

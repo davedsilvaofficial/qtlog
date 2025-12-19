@@ -592,12 +592,3 @@ All Notion entries written by **qtlog** — including **Log** and **ToDo** — M
 - **Log** and **ToDo** differ only by **parent container**.
 - Any deviation is considered **structural drift**.
 
-
-
-## Verify Mode (--verify)
-- Purpose: read-only verification that newest-at-top anchors exist and that qtlog is using authoritative ET time.
-- Output: always prints `VERIFY_TIME=YYYY-MM-DD HHMM ET`.
-- If Notion env is missing (`NOTION_API_KEY` or `NOTION_LOG_PAGE_ID`), prints `VERIFY_SKIP=missing_env` and exits 0.
-- With Notion env present, prints:
-  - `H1_FIRST=...` (first child under Log H1)
-  - `DAY_FIRST=...` and `DAY_SECOND=...` (first/second child under today’s day toggle)
