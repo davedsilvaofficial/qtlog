@@ -33,6 +33,8 @@ Options:
 
   --reconcile       Audit / reconciliation mode
 
+  --verify          Verify Notion newest-at-top anchors (read-only), prints VERIFY_TIME (ET) and exit
+
   --offline         Disable git operations
 
 
@@ -161,6 +163,7 @@ Options:
   --dry-run       Show what would happen, but don't modify files or git
   --stamp-now        Print authoritative current time (ET) and exit
   --reconcile        Print timestamp reconciliation (system/qtlog/git)
+    --verify        Verify Notion newest-at-top anchors (read-only) and exit
 
   -h, --help      Show this help
 
@@ -207,6 +210,7 @@ OVERRIDE_DEVICE=""
 STAMP_NOW=0
 RECONCILE=0
 LKG_MODE=0
+VERIFY_ONLY=0
 
 
 ARGS=()
@@ -253,6 +257,10 @@ while [ $# -gt 0 ]; do
       ;;
     --reconcile)
       RECONCILE=1
+      shift
+      ;;
+    --verify)
+      VERIFY_ONLY=1
       shift
       ;;
     --dry-run)
@@ -526,6 +534,73 @@ if [ "${EXPORT_CHECK:-0}" -eq 1 ]; then
   exit 0;
 fi
 
+
+verify_log_structure() {
+  local verify_now
+  verify_now="$(TZ=America/Toronto date '+%Y-%m-%d %H%M ET')"
+  printf "VERIFY_TIME=%s\n" "$verify_now"
+  local today log_h1_id day_id h1_first day_first day_second
+
+  today="$(TZ=America/Toronto date '+%Y-%m-%d')"
+
+  log_h1_id="$(
+    curl -sS "https://api.notion.com/v1/blocks/${NOTION_LOG_PAGE_ID}/children?page_size=200" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28" | \
+    jq -r '.results[]?
+      | select(.type=="heading_1")
+      | select((.heading_1.rich_text|map(.plain_text)|join(""))=="Log")
+      | .id' | head -n1
+  )"
+
+  [ -z "$log_h1_id" ] && { echo "VERIFY_FAIL: missing H1 Log"; return 1; }
+
+  h1_first="$(
+    curl -sS "https://api.notion.com/v1/blocks/${log_h1_id}/children?page_size=1" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28" | \
+    jq -r '( .results[0] | select(.type=="toggle")
+      | (.toggle.rich_text|map(.plain_text)|join("")) ) // "NOT_TOGGLE"'
+  )"
+
+  day_id="$(
+    curl -sS "https://api.notion.com/v1/blocks/${log_h1_id}/children?page_size=200" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28" | \
+    jq -r --arg d "$today" '.results[]?
+      | select(.type=="toggle")
+      | select((.toggle.rich_text[0].plain_text // "")==$d)
+      | .id' | head -n1
+  )"
+
+  [ -z "$day_id" ] && { echo "VERIFY_FAIL: missing day toggle"; return 1; }
+
+  day_first="$(
+    curl -sS "https://api.notion.com/v1/blocks/${day_id}/children?page_size=1" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28" | \
+    jq -r '( .results[0] | select(.type=="toggle")
+      | (.toggle.rich_text|map(.plain_text)|join("")) ) // "NOT_TOGGLE"'
+  )"
+
+  day_second="$(
+    curl -sS "https://api.notion.com/v1/blocks/${day_id}/children?page_size=3" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28" | \
+    jq -r '.results[1] | select(.type=="toggle")
+      | (.toggle.rich_text|map(.plain_text)|join(""))'
+  )"
+
+  printf "H1_FIRST=%s\nDAY_FIRST=%s\nDAY_SECOND=%s\n" \
+    "$h1_first" "$day_first" "$day_second"
+}
+
+# --- VERIFY DISPATCH (early exit, read-only) ---
+if [ "${VERIFY_ONLY:-0}" -eq 1 ]; then
+  verify_log_structure
+  exit $?
+fi
+
 if [ "${#ARGS[@]}" -eq 0 ]; then
   echo "qtlog: message is required" >&2
   echo "Try: qtlog.sh --help" >&2
@@ -569,82 +644,191 @@ if ! mkdir -p "$QTLOG_LOG_DIR"; then
 fi
 
 # --- Write log entry ----------------------------------------------
-ENTRY="$NOW_FMT [$DEVICE] $MESSAGE"
+ENTRY="$MESSAGE"
 echo "$ENTRY" >> "$LOG_FILE"
 
-# --- Notion helpers ---
-# LEGACY write_notion DISABLED (paragraph writer removed per SOP)
-# write_notion() {
-#   [ -z "${NOTION_API_KEY:-}" ] && return 0
-#   [ -z "${NOTION_LOG_PAGE_ID:-}" ] && return 0
-# 
-#   local entry="$ENTRY"
-#   local today
-#   today="$(TZ=America/Toronto date '+%Y-%m-%d')"
-# 
-#   # 1) Locate the H1 "Log" under the QT - Log page
-#   local log_h1_id
-#   log_h1_id="$(
-#     curl -s "https://api.notion.com/v1/blocks/${NOTION_LOG_PAGE_ID}/children?page_size=100" \
-#       -H "Authorization: Bearer $NOTION_API_KEY" \
-#       -H "Notion-Version: 2022-06-28" | \
-#     jq -r '.results[]
-#       | select(.type=="heading_1")
-#       | select((.heading_1.rich_text[0].plain_text // "")=="Log")
-#       | .id' | head -n1
-#   )"
-# 
-#   # Fallback: if we can't find the H1 for some reason, write at page root (still better than dropping)
-#   if [ -z "${log_h1_id:-}" ]; then
-#     curl -s -X PATCH "https://api.notion.com/v1/blocks/${NOTION_LOG_PAGE_ID}/children" \
-#       -H "Authorization: Bearer $NOTION_API_KEY" \
-#       -H "Notion-Version: 2022-06-28" \
-#       -H "Content-Type: application/json" \
-#       -d "{\"children\":[{\"object\":\"block\",\"type\":\"paragraph\",\"paragraph\":{\"rich_text\":[{\"type\":\"text\",\"text\":{\"content\":\"${entry}\"}}]}}]}" \
-#       > /dev/null
-#     return 0
-#   fi
-# 
-#   # 2) Find today's toggle under H1, or create it
-#   local today_toggle_id
-#   today_toggle_id="$(
-#     curl -s "https://api.notion.com/v1/blocks/${log_h1_id}/children?page_size=100" \
-#       -H "Authorization: Bearer $NOTION_API_KEY" \
-#       -H "Notion-Version: 2022-06-28" | \
-#     jq -r --arg t "$today" '.results[]
-#       | select(.type=="toggle")
-#       | select((.toggle.rich_text[0].plain_text // "")==$t)
-#       | .id' | head -n1
-#   )"
-# 
-#   if [ -z "${today_toggle_id:-}" ]; then
-#     today_toggle_id="$(
-#       curl -s -X PATCH "https://api.notion.com/v1/blocks/${log_h1_id}/children" \
-#         -H "Authorization: Bearer $NOTION_API_KEY" \
-#         -H "Notion-Version: 2022-06-28" \
-#         -H "Content-Type: application/json" \
-#         -d "{\"children\":[{\"object\":\"block\",\"type\":\"toggle\",\"toggle\":{\"rich_text\":[{\"type\":\"text\",\"text\":{\"content\":\"${today}\"}}],\"children\":[]}}]}" | \
-#       jq -r '.results[0].id'
-#     )"
-#   fi
-# 
-#   [ -z "${today_toggle_id:-}" ] && return 1
-# 
-#   # 3) Append entry under today's toggle
-#     # 3) Append ENTRY toggle under today's toggle (SOP: all entries are toggles)
-#     curl -s -X PATCH "https://api.notion.com/v1/blocks/${today_toggle_id}/children" \
-#       -H "Authorization: Bearer $NOTION_API_KEY" \
-#       -H "Notion-Version: 2022-06-28" \
-#       -H "Content-Type: application/json" \
-#       -d "{\"children\":[{\"object\":\"block\",\"type\":\"toggle\",\"toggle\":{\"rich_text\":[{\"type\":\"text\",\"text\":{\"content\":\"${entry}\"}}],\"children\":[{\"object\":\"block\",\"type\":\"toggle\",\"toggle\":{\"rich_text\":[{\"type\":\"text\",\"text\":{\"content\":\"Log\"}}],\"children\":[]}},{\"object\":\"block\",\"type\":\"toggle\",\"toggle\":{\"rich_text\":[{\"type\":\"text\",\"text\":{\"content\":\"Notes\"}}],\"children\":[]}},{\"object\":\"block\",\"type\":\"toggle\",\"toggle\":{\"rich_text\":[{\"type\":\"text\",\"text\":{\"content\":\"Next steps\"}}],\"children\":[]}}]}}}]}" \
-#       > /dev/null
-# }
 
 
+# --- Notion helpers (SOP: toggle-only, JSON-safe) ---
+
+# --- Notion helpers (SOP: toggle-only, JSON-safe, TOP anchor) ---
+
+
+
+
+# --- Notion helpers (SOP: newest-at-top, JSON-safe) ---
+
+# --- Notion helpers (SOP: newest-at-top, JSON-safe) ---
+write_notion_toggle() {
+  [ -z "${NOTION_API_KEY:-}" ] && return 0
+  [ -z "${NOTION_LOG_PAGE_ID:-}" ] && return 0
+
+  local raw="${ENTRY:-$MESSAGE}"
+
+  # SOP: entry title must be "YYYY-MM-DD HHMM ET — description"
+  local ts_min desc title
+  ts_min="$(TZ=America/Toronto date '+%Y-%m-%d %H%M')"
+
+  # Strip trailing timestamps like " — 2025-12-18 221141" or " — 2025-12-18 2211"
+  desc="$(printf "%s" "$raw" | sed -E 's/[[:space:]]+—[[:space:]]+[0-9]{4}-[0-9]{2}-[0-9]{2}[[:space:]]+[0-9]{4,6}$//')"
+  title="${ts_min} ET — ${desc}"
+
+  local today
+  today="$(TZ=America/Toronto date '+%Y-%m-%d')"
+
+  # 1) Locate the H1 "Log" under the QT - Log page
+  local log_h1_id
+  log_h1_id="$(
+    curl -sS "https://api.notion.com/v1/blocks/${NOTION_LOG_PAGE_ID}/children?page_size=100" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28" | \
+    jq -r '.results[]?
+      | select(.type=="heading_1")
+      | select((.heading_1.rich_text[0].plain_text // "")=="Log")
+      | .id' | head -n1
+  )"
+
+  if [ -z "${log_h1_id:-}" ]; then
+    echo "qtlog: Notion log failed (could not find H1 'Log')" >&2
+    return 1
+  fi
+
+  # 1b) Ensure H1 __TOP__ anchor exists (user should keep it as the FIRST block under H1)
+  local h1_top_id h1_first_id
+  h1_first_id="$(
+    curl -sS "https://api.notion.com/v1/blocks/${log_h1_id}/children?page_size=1" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28" | jq -r '.results[0].id // empty'
+  )"
+
+  h1_top_id="$(
+    curl -sS "https://api.notion.com/v1/blocks/${log_h1_id}/children?page_size=200" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28" | \
+    jq -r '.results[]?
+      | select(.type=="toggle")
+      | select((.toggle.rich_text|map(.plain_text)|join(""))=="__TOP__")
+      | .id' | head -n1
+  )"
+
+  if [ -z "${h1_top_id:-}" ]; then
+    # Create H1 __TOP__ (best practice: drag it to be FIRST under H1 once, then it stays there)
+    local payload_h1_top
+    payload_h1_top="$(jq -nc --arg after "${h1_first_id:-}" '{
+      after: ($after|select(length>0)),
+      children:[{object:"block",type:"toggle",toggle:{rich_text:[{type:"text",text:{content:"__TOP__"}}],children:[]}}]
+    }')"
+    h1_top_id="$(
+      curl -sS -X PATCH "https://api.notion.com/v1/blocks/${log_h1_id}/children" \
+        -H "Authorization: Bearer $NOTION_API_KEY" \
+        -H "Notion-Version: 2022-06-28" \
+        -H "Content-Type: application/json" \
+        -d "$payload_h1_top" | jq -r '.results[0].id // empty' )"
+    echo "qtlog: created H1 __TOP__ (please drag it to the TOP under H1 'Log' once)" >&2
+  fi
+
+  # 2) Find today's toggle under H1, or create it (new day inserted AFTER H1 __TOP__)
+  local day_id
+  day_id="$(
+    curl -sS "https://api.notion.com/v1/blocks/${log_h1_id}/children?page_size=200" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28" | \
+    jq -r --arg t "$today" '.results[]?
+      | select(.type=="toggle")
+      | select((.toggle.rich_text[0].plain_text // "")==$t)
+      | .id' | head -n1
+  )"
+
+  if [ -z "${day_id:-}" ]; then
+    local payload_day
+    payload_day="$(jq -nc --arg after "${h1_top_id:-}" --arg d "$today" '{
+      after: ($after|select(length>0)),
+      children:[{object:"block",type:"toggle",toggle:{rich_text:[{type:"text",text:{content:$d}}],children:[]}}]
+    }')"
+    day_id="$(
+      curl -sS -X PATCH "https://api.notion.com/v1/blocks/${log_h1_id}/children" \
+        -H "Authorization: Bearer $NOTION_API_KEY" \
+        -H "Notion-Version: 2022-06-28" \
+        -H "Content-Type: application/json" \
+        -d "$payload_day" | jq -r '.results[0].id // empty' )"
+  fi
+  [ -z "${day_id:-}" ] && return 1
+
+  # 3) Ensure Day __TOP__ anchor exists (user should keep it as FIRST under the day once)
+  local top_id first_id
+  first_id="$(
+    curl -sS "https://api.notion.com/v1/blocks/${day_id}/children?page_size=1" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28" | jq -r '.results[0].id // empty'
+  )"
+
+  top_id="$(
+    curl -sS "https://api.notion.com/v1/blocks/${day_id}/children?page_size=200" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28" | \
+    jq -r '.results[]?
+      | select(.type=="toggle")
+      | select((.toggle.rich_text|map(.plain_text)|join(""))=="__TOP__")
+      | .id' | head -n1
+  )"
+
+  if [ -z "${top_id:-}" ]; then
+    local payload_top
+    payload_top="$(jq -nc --arg after "${first_id:-}" '{
+      after: ($after|select(length>0)),
+      children:[{object:"block",type:"toggle",toggle:{rich_text:[{type:"text",text:{content:"__TOP__"}}],children:[]}}]
+    }')"
+    top_id="$(
+      curl -sS -X PATCH "https://api.notion.com/v1/blocks/${day_id}/children" \
+        -H "Authorization: Bearer $NOTION_API_KEY" \
+        -H "Notion-Version: 2022-06-28" \
+        -H "Content-Type: application/json" \
+        -d "$payload_top" | jq -r '.results[0].id // empty' )"
+    echo "qtlog: created Day __TOP__ (please drag it to the TOP under ${today} once)" >&2
+  fi
+  [ -z "${top_id:-}" ] && return 1
+
+
+  # Guard: Day __TOP__ must be the FIRST child under the day toggle for true newest-at-top behavior.
+  local day_first_title
+  day_first_title="$(
+    curl -sS "https://api.notion.com/v1/blocks/${day_id}/children?page_size=1" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28" | \
+    jq -r '(
+      .results[0]
+      | select(.type=="toggle")
+      | (.toggle.rich_text|map(.plain_text)|join(""))
+    ) // ""'
+  )"
+
+  if [ "$day_first_title" != "__TOP__" ]; then
+    echo "qtlog: Day __TOP__ is not the first child under ${today}. Drag Day __TOP__ to the TOP once, then retry." >&2
+    return 1
+  fi
+
+  # 4) Insert newest entry AFTER Day __TOP__ so it always appears at the top of the day list
+  local payload_entry
+  payload_entry="$(jq -nc --arg after "$top_id" --arg t "$title" '{
+    after:$after,
+    children:[{
+      object:"block", type:"toggle",
+      toggle:{
+        rich_text:[{type:"text", text:{content:$t}}],
+        children:[
+          {object:"block", type:"toggle", toggle:{rich_text:[{type:"text", text:{content:"Log"}}], children:[]}},
+          {object:"block", type:"toggle", toggle:{rich_text:[{type:"text", text:{content:"Notes"}}], children:[]}},
+          {object:"block", type:"toggle", toggle:{rich_text:[{type:"text", text:{content:"Next steps"}}], children:[]}}
+        ]
+      }
+    }]
+  }')"
+
+}
 
 # --- Notion sync ---
 if [ "$LOG_MODE" = "notion" ] || [ "$LOG_MODE" = "both" ]; then
-  write_notion
+  write_notion_toggle
 fi
 
 

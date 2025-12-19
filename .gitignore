@@ -31,3 +31,16 @@ secrets.*
 *.bak
 qtlog.sh.bak*
 Log/
+
+# Local backups
+CHANGELOG.md.bak_*
+qtlog.sh.bak_*
+
+# Debug artifacts
+debug/
+
+# Experimental / scratch
+qtlog-cei.patch
+qtlog.sh.cei-*
+qtlog.sh.pre-device-guard
+qtlog.sh.device-guard
