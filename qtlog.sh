@@ -35,6 +35,10 @@ Options:
 
   --verify          Verify Notion newest-at-top anchors (read-only), prints VERIFY_TIME (ET) and exit
 
+  --verify-all      Supercheck Log + ToDo anchors (read-only), prints VERIFY_TIME (ET) and exit
+
+  --verify-todo     Verify ToDo newest-at-top anchor (__TOP__) (read-only), prints VERIFY_TIME (ET) and exit
+
   --offline         Disable git operations
 
 
@@ -213,6 +217,9 @@ LKG_MODE=0
 VERIFY_ONLY=0
 
 
+VERIFY_ALL_ONLY=0
+
+VERIFY_TODO_ONLY=0
 ARGS=()
 TODO_MODE=0
 TODO_ITEM=""
@@ -265,6 +272,14 @@ while [ $# -gt 0 ]; do
       ;;
     --dry-run)
       DRY_RUN=1
+      shift
+      ;;
+    --verify-todo)
+      VERIFY_TODO_ONLY=1
+      shift
+      ;;
+    --verify-all)
+      VERIFY_ALL_ONLY=1
       shift
       ;;
 
@@ -391,92 +406,102 @@ PYIN
     exit 1
   fi
   echo "qtlog: Auto-discovered ToDo block id: $TODO_PARENT_ID" >&2
+    # --- NEWEST-AT-TOP CONTRACT (ToDo) ---------------------------------
+    # We enforce a hard "__TOP__" toggle under:
+    #   1) the ToDo heading (direct child) and
+    #   2) each YYYY-MM-DD day toggle (child)
+    #
+    # We always insert "after" the relevant "__TOP__" anchor.
+    # If we had to CREATE an anchor (because it was missing), operator may need to
+    # drag it to the top to satisfy verification (newest-at-top contract).
 
-  # Helper: ensure a pinned sentinel exists so we can always insert newest "at top" (after it).
-  ensure_pin() {
-    # $1 = parent_block_id, $2 = pin_title
-    local PARENT="$1"
-    local PIN_TITLE="$2"
+    # Helper: find a toggle id by title under a parent block id (first match)
+    find_toggle_id() {
+      # $1 parent, $2 title
+      curl -sS \
+        -H "Authorization: Bearer ${NOTION_API_KEY}" \
+        -H "Notion-Version: 2022-06-28" \
+        "https://api.notion.com/v1/blocks/${1}/children?page_size=200" \
+      | jq -r --arg t "$2" '
+        (.results // [])[]
+        | select(.type=="toggle")
+        | select((.toggle.rich_text|map(.plain_text)|join(""))==$t)
+        | .id
+      ' | head -n1
+    }
 
-    local DATA
-    DATA="$(curl -sS \
-      -H "Authorization: Bearer ${NOTION_API_KEY}" \
-      -H "Notion-Version: 2022-06-28" \
-      "https://api.notion.com/v1/blocks/${PARENT}/children?page_size=50")"
+    # Helper: create a toggle under parent, optionally after an id, return new block id
+    create_toggle() {
+      # $1 parent, $2 title, $3 after_id (may be empty), $4 child_top (0/1) include internal __TOP__
+      local PARENT="$1" TITLE="$2" AFTER="$3" CHILD_TOP="${4:-0}"
+      local JSON RESP HTTP_CODE NEWID
 
-    local PIN_ID
-    PIN_ID="$(printf '%s' "$DATA" | jq -r --arg t "$PIN_TITLE" '
-      [.results[] | select(.type=="toggle") | select((.toggle.rich_text[0].plain_text // "")==$t)][0].id // ""')"
+      if [ "$CHILD_TOP" -eq 1 ]; then
+        if [ -n "$AFTER" ]; then
+          JSON="$(jq -nc --arg after "$AFTER" --arg title "$TITLE" '
+            {after:$after, children:[{object:"block",type:"toggle",toggle:{rich_text:[{type:"text",text:{content:$title}}],children:[
+              {object:"block",type:"toggle",toggle:{rich_text:[{type:"text",text:{content:"__TOP__"}}],children:[]}}
+            ]}}]}')"
+        else
+          JSON="$(jq -nc --arg title "$TITLE" '
+            {children:[{object:"block",type:"toggle",toggle:{rich_text:[{type:"text",text:{content:$title}}],children:[
+              {object:"block",type:"toggle",toggle:{rich_text:[{type:"text",text:{content:"__TOP__"}}],children:[]}}
+            ]}}]}')"
+        fi
+      else
+        if [ -n "$AFTER" ]; then
+          JSON="$(jq -nc --arg after "$AFTER" --arg title "$TITLE" '
+            {after:$after, children:[{object:"block",type:"toggle",toggle:{rich_text:[{type:"text",text:{content:$title}}],children:[]}}]}')"
+        else
+          JSON="$(jq -nc --arg title "$TITLE" '
+            {children:[{object:"block",type:"toggle",toggle:{rich_text:[{type:"text",text:{content:$title}}],children:[]}}]}')"
+        fi
+      fi
 
-    if [ -n "$PIN_ID" ]; then
-      echo "$PIN_ID"
-      return 0
+      RESP="$(curl -sS -w '\nHTTP_CODE=%{http_code}\n' \
+        -X PATCH "https://api.notion.com/v1/blocks/${PARENT}/children" \
+        -H "Authorization: Bearer ${NOTION_API_KEY}" \
+        -H "Notion-Version: 2022-06-28" \
+        -H "Content-Type: application/json" \
+        --data "$JSON")"
+      HTTP_CODE="$(printf '%s' "$RESP" | sed -n 's/^HTTP_CODE=//p' | tail -n 1)"
+      if [ -z "$HTTP_CODE" ] || [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+        echo "qtlog: toggle create failed (HTTP $HTTP_CODE)" >&2
+        printf '%s\n' "$RESP" >&2
+        exit 1
+      fi
+      NEWID="$(printf '%s' "$RESP" | sed '/^HTTP_CODE=/d' | jq -r '.results[0].id // ""')"
+      echo "$NEWID"
+    }
+
+    # 1) Ensure __TOP__ exists under the ToDo heading
+    TODO_TOP_ID="$(find_toggle_id "$TODO_PARENT_ID" "__TOP__")"
+    if [ -z "${TODO_TOP_ID:-}" ]; then
+      TODO_TOP_ID="$(create_toggle "$TODO_PARENT_ID" "__TOP__" "" 0)"
+      echo "qtlog: created ToDo __TOP__ anchor (please drag it to FIRST under 'ToDo' if verify fails)" >&2
     fi
 
-    # Create pin sentinel
-    local JSON RESP NEWID
-    JSON="$(cat <<EOF
-{"children":[{"object":"block","type":"toggle","toggle":{"rich_text":[{"type":"text","text":{"content":"$PIN_TITLE"}}],"children":[]}}]}
-EOF
-)"
-    RESP="$(curl -sS -w '\nHTTP_CODE=%{http_code}\n' \
-      -X PATCH "https://api.notion.com/v1/blocks/${PARENT}/children" \
-      -H "Authorization: Bearer ${NOTION_API_KEY}" \
-      -H "Notion-Version: 2022-06-28" \
-      -H "Content-Type: application/json" \
-      --data "$JSON")"
-    local HTTP_CODE
-    HTTP_CODE="$(printf '%s' "$RESP" | sed -n 's/^HTTP_CODE=//p' | tail -n 1)"
-    if [ -z "$HTTP_CODE" ] || [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
-      echo "qtlog: PIN create failed (HTTP $HTTP_CODE)" >&2
-      printf '%s\n' "$RESP" >&2
-      exit 1
+    # 2) Ensure today's YYYY-MM-DD toggle exists under ToDo heading, inserted after __TOP__
+    DATE_ID="$(find_toggle_id "$TODO_PARENT_ID" "$DATE_ONLY")"
+    if [ -z "${DATE_ID:-}" ]; then
+      DATE_ID="$(create_toggle "$TODO_PARENT_ID" "$DATE_ONLY" "$TODO_TOP_ID" 1)"
     fi
-    NEWID="$(printf '%s' "$RESP" | sed '/^HTTP_CODE=/d' | jq -r '.results[0].id // ""')"
-    echo "$NEWID"
-  }
+    echo "qtlog: Using date toggle id: $DATE_ID ($DATE_ONLY)" >&2
 
-  # Ensure DATE toggle exists under ToDo heading. Insert "near top" by using a pin sentinel.
-  TODO_PIN_ID="$(ensure_pin "$TODO_PARENT_ID" "📌 PIN")"
-
-  DATE_ID="$(curl -sS \
-    -H "Authorization: Bearer ${NOTION_API_KEY}" \
-    -H "Notion-Version: 2022-06-28" \
-    "https://api.notion.com/v1/blocks/${TODO_PARENT_ID}/children?page_size=100" \
-    | jq -r --arg d "$DATE_ONLY" '
-      [.results[] | select(.type=="toggle") | select((.toggle.rich_text[0].plain_text // "")==$d)][0].id // ""'
-  )"
-
-  if [ -z "$DATE_ID" ]; then
-    # Create date toggle after PIN (so it sits at the top section)
-    JSON="$(cat <<EOF
-{"after":"$TODO_PIN_ID","children":[{"object":"block","type":"toggle","toggle":{"rich_text":[{"type":"text","text":{"content":"$DATE_ONLY"}}],"children":[]}}]}
-EOF
-)"
-    RESP="$(curl -sS -w '\nHTTP_CODE=%{http_code}\n' \
-      -X PATCH "https://api.notion.com/v1/blocks/${TODO_PARENT_ID}/children" \
-      -H "Authorization: Bearer ${NOTION_API_KEY}" \
-      -H "Notion-Version: 2022-06-28" \
-      -H "Content-Type: application/json" \
-      --data "$JSON")"
-    HTTP_CODE="$(printf '%s' "$RESP" | sed -n 's/^HTTP_CODE=//p' | tail -n 1)"
-    if [ -z "$HTTP_CODE" ] || [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
-      echo "qtlog: DATE create failed (HTTP $HTTP_CODE)" >&2
-      printf '%s\n' "$RESP" >&2
-      exit 1
+    # 3) Ensure day-internal __TOP__ exists under DATE_ID (child)
+    DATE_TOP_ID="$(find_toggle_id "$DATE_ID" "__TOP__")"
+    if [ -z "${DATE_TOP_ID:-}" ]; then
+      DATE_TOP_ID="$(create_toggle "$DATE_ID" "__TOP__" "" 0)"
+      echo "qtlog: created day __TOP__ anchor (please drag it to FIRST inside $DATE_ONLY if verify fails)" >&2
     fi
-    DATE_ID="$(printf '%s' "$RESP" | sed '/^HTTP_CODE=/d' | jq -r '.results[0].id // ""')"
-  fi
-  echo "qtlog: Using date toggle id: $DATE_ID ($DATE_ONLY)" >&2
 
-  # Ensure a pin exists inside the DATE toggle too, so newest CEI goes to top (after that pin).
-  DATE_PIN_ID="$(ensure_pin "$DATE_ID" "📌 TOP")"
+    # ------------------------------------------------------------------
 
   # Create CEI entry (toggle with 3 toggle children) after DATE pin so it appears at the top
   URL="https://api.notion.com/v1/blocks/${DATE_ID}/children"
   JSON="$(cat <<EOF
 {
-  "after": "$DATE_PIN_ID",
+  "after": "$DATE_TOP_ID",
   "children": [
     {
       "object": "block",
@@ -601,9 +626,238 @@ verify_log_structure() {
     "$h1_first" "$day_first" "$day_second"
 }
 
+
+
+
+
+verify_todo_structure() {
+  local verify_now todo_h_id resp todo_first todo_second top_id top_children
+
+  verify_now="$(TZ=America/Toronto date '+%Y-%m-%d %H%M ET')"
+  printf "VERIFY_TIME=%s\n" "$verify_now"
+
+  # CI-safe / operator-safe: if Notion env is missing, treat verify as a read-only clock proof
+  if [ -z "${NOTION_API_KEY:-}" ] || [ -z "${NOTION_TODO_PAGE_ID:-}" ]; then
+    echo "VERIFY_SKIP=missing_env"
+    return 0
+  fi
+
+  # 1) Find the ToDo heading block under the ToDo page (accept heading_1/2/3)
+  resp="$(
+    curl -sS "https://api.notion.com/v1/blocks/${NOTION_TODO_PAGE_ID}/children?page_size=200" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28"
+  )"
+
+  todo_h_id="$(
+    printf '%s' "$resp" | jq -r '
+      .results[]?
+      | select(.type=="heading_1" or .type=="heading_2" or .type=="heading_3")
+      | . as $b
+      | ( if $b.type=="heading_1" then ($b.heading_1.rich_text|map(.plain_text)|join(""))
+          elif $b.type=="heading_2" then ($b.heading_2.rich_text|map(.plain_text)|join(""))
+          else ($b.heading_3.rich_text|map(.plain_text)|join(""))
+        end
+        ) as $t
+      | select($t=="ToDo")
+      | .id
+    ' | head -n1
+  )"
+
+  printf "TODO_H_ID=%s\n" "${todo_h_id:-}"
+
+  if [ -z "${todo_h_id:-}" ]; then
+    echo "VERIFY_FAIL=todo_heading_missing"
+    return 1
+  fi
+
+  # 2) Check first/second children under the ToDo heading (newest-at-top anchor expected)
+  resp="$(
+    curl -sS "https://api.notion.com/v1/blocks/${todo_h_id}/children?page_size=3" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28"
+  )"
+
+  todo_first="$(
+    printf '%s' "$resp" | jq -r '( .results[0] | select(.type=="toggle")
+      | (.toggle.rich_text|map(.plain_text)|join("")) ) // "NOT_TOGGLE"'
+  )"
+
+  todo_second="$(
+    printf '%s' "$resp" | jq -r '( .results[1] | select(.type=="toggle")
+      | (.toggle.rich_text|map(.plain_text)|join("")) ) // "EMPTY"'
+  )"
+
+  printf "TODO_FIRST=%s\nTODO_SECOND=%s\n" "$todo_first" "$todo_second"
+
+  if [ "$todo_first" != "__TOP__" ]; then
+    echo "VERIFY_FAIL=todo_top_anchor_missing_or_not_first"
+    return 1
+  fi
+
+  # If there is a second item, it must be a toggle (unless EMPTY)
+  if [ "$todo_second" = "NOT_TOGGLE" ]; then
+    echo "VERIFY_FAIL=todo_second_not_toggle"
+    return 1
+  fi
+
+  # Optional: ensure __TOP__ anchor has zero children
+  top_id="$(
+    printf '%s' "$resp" | jq -r '.results[0].id // empty'
+  )"
+  if [ -n "$top_id" ]; then
+    top_children="$(
+      curl -sS "https://api.notion.com/v1/blocks/${top_id}/children?page_size=1" \
+        -H "Authorization: Bearer $NOTION_API_KEY" \
+        -H "Notion-Version: 2022-06-28" | jq -r '(.results|length) // 0'
+    )"
+    printf "TODO_TOP_CHILDREN=%s\n" "$top_children"
+    if [ "$top_children" != "0" ]; then
+      echo "VERIFY_FAIL=todo_top_anchor_not_empty"
+      return 1
+    fi
+  fi
+
+  return 0
+}
+
+
+ensure_todo_day_toggle() {
+  # Ensures today's YYYY-MM-DD toggle exists under the ToDo heading (direct child),
+  # inserted immediately after the __TOP__ anchor (newest-at-top).
+  # Creates the day toggle with an internal __TOP__ anchor for future per-day inserts.
+
+  local today todo_h_id resp top_id day_id payload
+
+  today="$(TZ=America/Toronto date '+%Y-%m-%d')"
+
+  if [ -z "${NOTION_API_KEY:-}" ] || [ -z "${NOTION_TODO_PAGE_ID:-}" ]; then
+    echo "TODO_ENSURE_SKIP=missing_env"
+    return 0
+  fi
+
+  # Find ToDo heading under ToDo page
+  resp="$(
+    curl -sS "https://api.notion.com/v1/blocks/${NOTION_TODO_PAGE_ID}/children?page_size=200" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28"
+  )"
+
+  todo_h_id="$(
+    printf '%s' "$resp" | jq -r '
+      .results[]?
+      | select(.type=="heading_1" or .type=="heading_2" or .type=="heading_3")
+      | . as $b
+      | ( if $b.type=="heading_1" then ($b.heading_1.rich_text|map(.plain_text)|join(""))
+          elif $b.type=="heading_2" then ($b.heading_2.rich_text|map(.plain_text)|join(""))
+          else ($b.heading_3.rich_text|map(.plain_text)|join(""))
+        end ) as $t
+      | select($t=="ToDo")
+      | .id
+    ' | head -n1
+  )"
+
+  if [ -z "${todo_h_id:-}" ]; then
+    echo "TODO_ENSURE_FAIL=todo_heading_missing"
+    return 1
+  fi
+
+  # Load children of ToDo heading to find __TOP__ id and whether today's toggle exists
+  resp="$(
+    curl -sS "https://api.notion.com/v1/blocks/${todo_h_id}/children?page_size=200" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28"
+  )"
+
+  top_id="$(
+    printf '%s' "$resp" | jq -r '
+      .results[]?
+      | select(.type=="toggle")
+      | select((.toggle.rich_text|map(.plain_text)|join(""))=="__TOP__")
+      | .id
+    ' | head -n1
+  )"
+
+  if [ -z "${top_id:-}" ]; then
+    echo "TODO_ENSURE_FAIL=todo_top_anchor_missing"
+    return 1
+  fi
+
+  day_id="$(
+    printf '%s' "$resp" | jq -r --arg today "$today" '
+      .results[]?
+      | select(.type=="toggle")
+      | select((.toggle.rich_text|map(.plain_text)|join(""))==$today)
+      | .id
+    ' | head -n1
+  )"
+
+  if [ -n "${day_id:-}" ]; then
+    echo "TODO_DAY_EXISTS=$today"
+    return 0
+  fi
+
+  # Create today's toggle immediately after __TOP__ (newest-at-top).
+  payload="$(
+    jq -nc --arg after "$top_id" --arg today "$today" '
+      {
+        after: $after,
+        children: [
+          {
+            object: "block",
+            type: "toggle",
+            toggle: {
+              rich_text: [{type:"text", text:{content:$today}}],
+              children: [
+                { object:"block", type:"toggle",
+                  toggle:{ rich_text:[{type:"text", text:{content:"__TOP__"}}], children:[] }
+                }
+              ]
+            }
+          }
+        ]
+      }'
+  )"
+
+  curl -sS -X PATCH "https://api.notion.com/v1/blocks/${todo_h_id}/children" \
+    -H "Authorization: Bearer $NOTION_API_KEY" \
+    -H "Notion-Version: 2022-06-28" \
+    -H "Content-Type: application/json" \
+    -d "$payload" >/dev/null
+
+  echo "TODO_DAY_CREATED=$today"
+  return 0
+}
+
+
+
+
+
+
 # --- VERIFY DISPATCH (early exit, read-only) ---
+# --verify-all: supercheck Log + ToDo (read-only) and exit nonzero if any fails
+if [ "${VERIFY_ALL_ONLY:-0}" -eq 1 ]; then
+  verify_log_structure || exit $?
+  verify_todo_structure || exit $?
+  exit 0
+fi
+
+# --verify: verify Log + ToDo (read-only) and exit nonzero if any fails
 if [ "${VERIFY_ONLY:-0}" -eq 1 ]; then
-  verify_log_structure
+  verify_log_structure || exit $?
+  verify_todo_structure || exit $?
+  exit 0
+fi
+
+# --verify-todo: verify ToDo only (read-only)
+if [ "${VERIFY_TODO_ONLY:-0}" -eq 1 ]; then
+  verify_todo_structure
+  exit $?
+fi
+
+# --verify-todo: verify ToDo only (read-only)
+if [ "${VERIFY_TODO_ONLY:-0}" -eq 1 ]; then
+  verify_todo_structure
   exit $?
 fi
 
@@ -880,3 +1134,4 @@ if [[ "${EXPORT_CHECK:-0}" == "1" ]]; then
   echo "✅ Export check passed: only /public content referenced."
   exit 0
 fi
+
