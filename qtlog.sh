@@ -737,9 +737,6 @@ while [ $# -gt 0 ]; do
       STATUS_ONLY=1
       shift
       ;;
-      RECONCILE=1
-      shift
-      ;;
     --verify)
       VERIFY_ONLY=1
       shift
