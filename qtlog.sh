@@ -1,129 +1,260 @@
-# ENV FILE (authoritative): ~/.config/qt/.env
-# Contains: NOTION_API_KEY, NOTION_LOG_PAGE_ID, NOTION_TODO_PAGE_ID
-
-usage() {
-
-  cat <<'EOF'
-
-qtlog.sh — Quantum Trek Logging Utility
-
-
-
-Usage:
-
-  qtlog.sh [options] <message>
-
-
-
-Options:
-
-  --help            Show this help
-
-  --log             Log message (default)
-
-    local            Filesystem only
-
-    notion           Notion only
-
-    both             Filesystem + Notion
-
-  --todo <item>     Write item to Notion ToDo
-
-  --dry-run         Preview without side effects
-
-  --reconcile       Audit / reconciliation mode
-
-  --verify          Verify Notion newest-at-top anchors (read-only), prints VERIFY_TIME (ET) and exit
-
-  --verify-all      Supercheck Log + ToDo anchors (read-only), prints VERIFY_TIME (ET) and exit
-
-  --verify-todo     Verify ToDo newest-at-top anchor (__TOP__) (read-only), prints VERIFY_TIME (ET) and exit
-
-  --offline         Disable git operations
-
-
-
-Execution hierarchy is documented in code and CHANGELOG.
-
-EOF
-
-}
-
-
 #!/usr/bin/env bash
+# ==============================================================================
+# QTLOG — RUNTIME SOP ENFORCEMENT (NO ASSUMPTIONS)
+#
+# This script is guarded by a GLOBAL SOP GATE.
+#
+# Behaviour:
+#   - All runs validate baseline Termux + repo + env invariants
+#   - Notion operations are *strictly gated* (need_notion)
+#   - SOP failures exit immediately
+#   - Best-effort SOP failure notes may be written to Notion (__TOP__)
+#
+# Safe verification:
+#   bash ./qtlog.sh --sop-verify
+#   bash ./qtlog.sh --sop-verify need_notion
+#
+# Design rule:
+#   NO ASSUMPTIONS. All dependencies are verified before side effects.
+# ==============================================================================
+
 # -----------------------------------------------------------------------------
-# GOVERNANCE & DISCIPLINE
+# GOVERNANCE & DISCIPLINE (Unified CLI v1.3.0)
 #
 # This script is governed by:
-#   - docs/QT-Coding-SOP.md   (execution rules, change control, proof requirements)
-#   - CHANGELOG.md            (auditable history of all functional changes)
-#
-# Execution Gating:
-#   - Preview Mode is default
-#   - NO code change or git action occurs without the explicit word: Execute
-#   - Every executed step MUST produce unconditional output as proof
-#
-# If behavior here conflicts with the SOP or CHANGELOG, THIS FILE IS WRONG.
+#   - docs/03_Technical/QT-Coding-SOP.md
+#   - CHANGELOG.md
+#   - MASTER_INDEX.md
 # -----------------------------------------------------------------------------
 
-# -----------------------------------------------------------------------------
-# CHANGE CONTROL (MANDATORY)
-#
-# This file is governed by CHANGELOG.md
-#
-# Rules:
-# - Any functional change MUST be reflected in CHANGELOG.md
-# - Before editing: review CHANGELOG.md for regression risk
-# - Recovery is normal; undocumented recovery is NOT
-#
-# This header exists to prevent silent regression of:
-# - Notion logging behavior
-# - Git data-room hardening
-# - CLI/runtime switches
-# -----------------------------------------------------------------------------
+export TZ=America/Toronto
+VERSION="1.3.0"
 
-# -------------------------------------------------------------------
-# GOVERNANCE NOTICE — EXECUTABLE SCRIPT
-
-
-# This script is an operational control artifact.
-#
-# • It is listed and governed under:
-#   docs/SOFTWARE_INVENTORY.md
-#
-# • Any modification to this file:
-#   - MUST preserve its governance intent
-#   - MUST be reflected in SOFTWARE_INVENTORY.md
-#   - SHOULD be reviewed for disclosure, compliance, and audit impact
-#
-# • This script exists to reduce human error and memory dependence.
-#
-# • Accidental deletion, bypass, or silent modification may result in:
-#   - Loss of audit integrity
-#   - Disclosure control failure
-#   - Operational regression
-#
-# Treat as infrastructure, not convenience code.
-
-confirm_commit() {
-  echo
-  read -r -p "Commit log entry to git? [y/N]: " response
-  case "$response" in
-    [yY][eE][sS]|[yY]) return 0 ;;
-    *) echo "qtlog: commit skipped"; return 1 ;;
-  esac
+# --- DYNAMIC DISCOVERY ---
+list_bin_commands() {
+  if [ -d "bin" ]; then
+    echo "Available sub-commands in bin/:"
+    ls bin/ | sed 's/^/  - /'
+  fi
 }
 
-# -------------------------------------------------------------------
-#!/bin/bash
-export TZ=America/Toronto
-VERSION="1.2.4"
-set -euo pipefail
+usage() {
+  cat <<HELP
+qtlog.sh v${VERSION} — Quantum Trek Unified CLI
+"One command to rule them all"
 
-# --- DEVICE GUARD (nounset-safe; required by SOP) ---
-: "${DEVICE:=$(getprop ro.product.model 2>/dev/null || true)}"
-[ -n "$DEVICE" ] || DEVICE="Device"
-# --- END DEVICE GUARD ---
+Usage:
+  ./qtlog.sh [options] <message>
+  ./qtlog.sh <command> [args]
+
+Options:
+  --log <msg>       (Default) Log message to Filesystem/Notion
+  --todo <item>     Add item to Notion ToDo Vault
+  --stamp-now       Print authoritative ET timestamp
+  --reconcile       Audit system, git, and qtlog clocks
+  --verify-all      Read-only check of Notion anchors
+  --dry-run         Preview actions without execution
+  --offline         Disable all git operations
+  -h, --help        Show this enhanced help menu
+
+$(list_bin_commands)
+
+Data Room Access:
+  See MASTER_INDEX.md for full technical and legal directory.
+  Proprietary data is stored in the Private Vault (see SECURITY.md).
+
+HELP
+}
+
+# --- STAMP & RECONCILE HELPERS ---
+if [[ "${1:-}" == "--stamp-now" ]]; then
+    TZ="America/New_York" date "+%Y-%m-%d %H:%M:%S ET"
+    exit 0
+fi
+
+if [[ "${1:-}" == "--reconcile" ]]; then
+    echo "--- Time Reconciliation Audit ---"
+    echo "System Time: $(date)"
+    echo "Auth (ET):   $(TZ="America/New_York" date)"
+    echo "Git Status:  $(git log -1 --format=%cd || echo 'No commits yet')"
+    exit 0
+fi
+
+# --- HELP GATE ---
+if [[ "${1:-}" == "-h" ]] || [[ "${1:-}" == "--help" ]]; then
+    usage
+    exit 0
+fi
+
+
+### QTLOG_CONFIG_BLOCK ###
+
+### QTLOG_CODING_SOP ###
+# CODING STANDARD (MANDATORY)
+#
+# 1) No assumptions:
+#    - Never assume Termux, env vars, Notion, curl, jq, repo, or pwd
+#    - Always verify via sop_env_check (or stricter)
+#
+# 2) Separation of concerns:
+#    - sop_env_check      → validation only
+#    - sop_fail_notion_log→ best-effort observability only
+#    - writers            → must gate with: sop_env_check need_notion
+#
+# 3) Failure rules:
+#    - Baseline failures → exit immediately
+#    - Observability failures → NEVER block execution
+#
+# 4) Determinism:
+#    - TZ fixed to America/Toronto
+#    - pwd resolved with pwd -P
+#    - No reliance on inherited shell state
+#
+# 5) Entry discipline:
+#    - All new modes must pass through GLOBAL SOP GATE
+#    - --sop-verify must remain side-effect free
+#
+# Violation of this SOP = rejected patch.
+
+
+### QTLOG_SOP_ENV_CHECK ###
+sop_env_check() {
+  local fail=0
+
+  echo "SOP_CHECK: ts=$(TZ=America/Toronto date '+%Y-%m-%d %H%M %Z')"
+  echo "SOP_CHECK: user=$USER home=$HOME pwd=$(pwd -P)"
+  echo "SOP_CHECK: termux_version=${TERMUX_VERSION:-MISSING} prefix=${PREFIX:-MISSING}"
+  echo "SOP_CHECK: device=$(getprop ro.product.model 2>/dev/null || echo 'UNKNOWN')"
+
+  # 1) Must be Termux (not proot)
+  if [ -z "${TERMUX_VERSION:-}" ] || [ -z "${PREFIX:-}" ]; then
+    echo "SOP_FAIL: not in a normal Termux session (TERMUX_VERSION/PREFIX missing)" >&2
+    fail=1
+  fi
+
+  # 2) Must be in repo
+  if [ ! -d "$HOME/qtlog_repo" ] || [ ! -f "$HOME/qtlog_repo/qtlog.sh" ]; then
+    echo "SOP_FAIL: repo missing at $HOME/qtlog_repo" >&2
+    fail=1
+  fi
+
+  # 3) Must have env
+  if [ ! -f "$HOME/.config/qt/.env" ]; then
+    echo "SOP_FAIL: missing envfile $HOME/.config/qt/.env" >&2
+    fail=1
+  fi
+
+  # 4) Must have Notion creds when doing Notion ops
+  if [ -n "${1:-}" ] && [ "$1" = "need_notion" ]; then
+    if [ -z "${NOTION_API_KEY:-}" ] || [ -z "${NOTION_LOG_PAGE_ID:-}" ]; then
+      echo "SOP_FAIL: NOTION_API_KEY / NOTION_LOG_PAGE_ID missing" >&2
+      fail=1
+    fi
+  fi
+
+  # 5) Must have curl/jq for Notion ops
+  if [ -n "${1:-}" ] && [ "$1" = "need_notion" ]; then
+    command -v curl >/dev/null 2>&1 || { echo "SOP_FAIL: curl missing" >&2; fail=1; }
+    command -v jq   >/dev/null 2>&1 || { echo "SOP_FAIL: jq missing" >&2; fail=1; }
+  fi
+
+  return $fail
+}
+
+### QTLOG_SOP_FAIL_NOTION_LOG ###
+# Best-effort: if SOP fails but Notion creds exist, write a short note under today's __TOP__.
+# This must NEVER assume Notion is available; it only runs when prerequisites exist.
+sop_fail_notion_log() {
+  local msg ts device payload log_h1_id day_id top_id resp
+
+  msg="${1:-SOP_FAIL: baseline env check failed}"
+  ts="$(TZ=America/Toronto date '+%Y-%m-%d %H%M %Z')"
+  device="$(getprop ro.product.model 2>/dev/null || echo 'UNKNOWN')"
+
+  # Hard prereqs (quietly skip if missing)
+  [ -n "${NOTION_API_KEY:-}" ] || return 0
+  [ -n "${NOTION_LOG_PAGE_ID:-}" ] || return 0
+  command -v curl >/dev/null 2>&1 || return 0
+  command -v jq   >/dev/null 2>&1 || return 0
+
+  # Ensure today's __TOP__ exists
+  ensure_today_top >/dev/null 2>&1 || return 0
+
+  # Re-find top_id (avoid relying on any global vars)
+  log_h1_id="$(
+    curl -sS "https://api.notion.com/v1/blocks/${NOTION_LOG_PAGE_ID}/children?page_size=200" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28" |
+    jq -r '.results[]? | select(.type=="heading_1") | select((.heading_1.rich_text[0].plain_text // "")=="Log") | .id' | head -n1
+  )"
+  [ -n "${log_h1_id:-}" ] || return 0
+
+  day_id="$(
+    today="$(TZ=America/Toronto date '+%Y-%m-%d')" &&
+    curl -sS "https://api.notion.com/v1/blocks/${log_h1_id}/children?page_size=200" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28" |
+    jq -r --arg d "$today" '.results[]? | select(.type=="toggle") | select((.toggle.rich_text[0].plain_text // "")==$d) | .id' | head -n1
+  )"
+  [ -n "${day_id:-}" ] || return 0
+
+  top_id="$(
+    curl -sS "https://api.notion.com/v1/blocks/${day_id}/children?page_size=200" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28" |
+    jq -r '.results[]? | select(.type=="toggle") | select((.toggle.rich_text|map(.plain_text)|join(""))=="__TOP__") | .id' | head -n1
+  )"
+  [ -n "${top_id:-}" ] || return 0
+
+  payload="$(
+    jq -nc --arg t "$ts" --arg d "$device" --arg p "$(pwd -P)" --arg m "$msg" '{
+      children:[{
+        object:"block",
+        type:"paragraph",
+        paragraph:{rich_text:[{type:"text",text:{content:("SOP_FAIL " + $t + " | " + $d + " | " + $p + " | " + $m)}}]}
+      }]
+    }'
+  )"
+
+  resp="$(
+    curl -sS -X PATCH "https://api.notion.com/v1/blocks/${top_id}/children" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28" \
+      -H "Content-Type: application/json" \
+      -d "$payload"
+  )" || return 0
+
+  # No hard fail on logging; best-effort only
+  return 0
+}
+
+### QTLOG_SOP_ENV_CHECK_CALL ###
+# SOP verify mode: print checks, then exit (0=pass, 1=fail)
+if [[ "${1:-}" == "--sop-verify" ]]; then
+  sop_env_check "${2:-}"
+  exit $?
+fi
+# Global SOP gate (stricter): if baseline check fails, best-effort log to Notion under today/__TOP__, then exit.
+if ! sop_env_check; then
+  sop_fail_notion_log "baseline sop_env_check failed" || true
+  exit 1
+fi
+
+# --- CONFIG LOAD (required for non-empty Repo dir / Log dir) -----------------
+# Primary env (current standard)
+ENVFILE="$HOME/.config/qt/.env"
+if [ -f "$ENVFILE" ]; then
+  set -a
+  # shellcheck source=/dev/null
+  . "$ENVFILE"
+  set +a
+fi
+
+# Legacy optional override (kept for compatibility)
+if [ -f "$HOME/.qtlog_env" ]; then
+  # shellcheck source=/dev/null
+  . "$HOME/.qtlog_env"
+fi
 
 # --- Defaults -----------------------------------------------------
 QTLOG_REPO_DIR_DEFAULT="$HOME/qtlog_repo"
@@ -131,20 +262,6 @@ QTLOG_LOG_SUBDIR_DEFAULT="Log"
 QTLOG_TIMESTAMP_FORMAT_DEFAULT="%Y-%m-%d %H%M %Z"
 QTLOG_DEVICE_DEFAULT="Fold7"
 
-# --- Optional env override (~/.qtlog_env) -------------------------
-# You can set any of:
-#   QTLOG_REPO_DIR
-#   QTLOG_LOG_SUBDIR
-#   QTLOG_TIMESTAMP_FORMAT
-#   QTLOG_DEVICE
-#   QTLOG_DISABLE_GIT  (1 = disable git entirely)
-if [ -f "$HOME/.qtlog_env" ]; then
-  # shellcheck source=/dev/null
-  . "$HOME/.qtlog_env"
-fi
-
-LOG_MODE="local"
-TODO_MODE=0
 # --- Effective settings -------------------------------------------
 QTLOG_REPO_DIR="${QTLOG_REPO_DIR:-$QTLOG_REPO_DIR_DEFAULT}"
 QTLOG_LOG_SUBDIR="${QTLOG_LOG_SUBDIR:-$QTLOG_LOG_SUBDIR_DEFAULT}"
@@ -154,58 +271,91 @@ QTLOG_DISABLE_GIT="${QTLOG_DISABLE_GIT:-0}"
 
 QTLOG_LOG_DIR="$QTLOG_REPO_DIR/$QTLOG_LOG_SUBDIR"
 
-# --- CLI help -----------------------------------------------------
-print_help() {
-  cat <<EOF
-qtlog v${VERSION}
-Usage: qtlog.sh [OPTIONS] "message"
+# Default LOG_MODE if not already set by earlier logic
+: "${LOG_MODE:=local}"
 
-Options:
-  --device NAME   Override device tag (default: $QTLOG_DEVICE)
-  --no-git        Skip git operations for this run
-  --offline       Alias for --no-git
-  --dry-run       Show what would happen, but don't modify files or git
-  --stamp-now        Print authoritative current time (ET) and exit
-  --reconcile        Print timestamp reconciliation (system/qtlog/git)
-    --verify        Verify Notion newest-at-top anchors (read-only) and exit
+### QTLOG_ENSURE_TODAY_TOP ###
+ensure_today_top() {
+  [ -z "${NOTION_API_KEY:-}" ] && return 0
+  [ -z "${NOTION_LOG_PAGE_ID:-}" ] && return 0
 
-  -h, --help      Show this help
+  local today log_h1_id day_id top_id first_id payload resp
 
-Execution Mode Hierarchy:
+  today="$(TZ=America/Toronto date '+%Y-%m-%d')"
 
-qtlog.sh
-├── --help
-│   └── Display command usage and execution model
-├── --log "<message>" (default)
-│   ├── local      → filesystem log only
-│   ├── notion     → Notion Log page only
-│   └── both       → filesystem + Notion Log
-├── --todo "<item>"
-│   └── Write to Notion ToDo page only
-├── --dry-run
-│   └── Preview execution without side effects
-├── --reconcile
-│   └── Time reconciliation / audit mode
-└── --offline / --no-git
-    └── Disable git operations
+  # Find H1 "Log"
+  log_h1_id="$(
+    curl -sS "https://api.notion.com/v1/blocks/${NOTION_LOG_PAGE_ID}/children?page_size=200" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28" | \
+    jq -r '.results[]? | select(.type=="heading_1") | select((.heading_1.rich_text[0].plain_text // "")=="Log") | .id' | head -n1
+  )"
+  [ -z "${log_h1_id:-}" ] && return 0
 
-EOF
+  # Find today's toggle under H1
+  day_id="$(
+    curl -sS "https://api.notion.com/v1/blocks/${log_h1_id}/children?page_size=200" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28" | \
+    jq -r --arg d "$today" '.results[]? | select(.type=="toggle") | select((.toggle.rich_text[0].plain_text // "")==$d) | .id' | head -n1
+  )"
+
+  # If day toggle doesn't exist, create it
+  if [ -z "${day_id:-}" ]; then
+    payload="$(jq -nc --arg d "$today" '{children:[{object:"block",type:"toggle",toggle:{rich_text:[{type:"text",text:{content:$d}}],children:[]}}]}')"
+    resp="$(
+      curl -sS -X PATCH "https://api.notion.com/v1/blocks/${log_h1_id}/children" \
+        -H "Authorization: Bearer $NOTION_API_KEY" \
+        -H "Notion-Version: 2022-06-28" \
+        -H "Content-Type: application/json" \
+        -d "$payload"
+    )"
+    day_id="$(printf '%s' "$resp" | jq -r '.results[0].id // empty')"
+  fi
+  [ -z "${day_id:-}" ] && return 1
+
+  # Ensure Day __TOP__ exists under today's toggle
+  top_id="$(
+    curl -sS "https://api.notion.com/v1/blocks/${day_id}/children?page_size=200" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28" | \
+    jq -r '.results[]? | select(.type=="toggle") | select((.toggle.rich_text|map(.plain_text)|join(""))=="__TOP__") | .id' | head -n1
+  )"
+
+  if [ -z "${top_id:-}" ]; then
+    first_id="$(
+      curl -sS "https://api.notion.com/v1/blocks/${day_id}/children?page_size=1" \
+        -H "Authorization: Bearer $NOTION_API_KEY" \
+        -H "Notion-Version: 2022-06-28" | jq -r '.results[0].id // empty'
+    )"
+    payload="$(jq -nc --arg after "${first_id:-}" '
+      if ($after|length) > 0 then
+        {after:$after, children:[{object:"block",type:"toggle",toggle:{rich_text:[{type:"text",text:{content:"__TOP__"}}],children:[]}}]}
+      else
+        {children:[{object:"block",type:"toggle",toggle:{rich_text:[{type:"text",text:{content:"__TOP__"}}],children:[]}}]}
+      end
+    ')"
+    resp="$(
+      curl -sS -X PATCH "https://api.notion.com/v1/blocks/${day_id}/children" \
+        -H "Authorization: Bearer $NOTION_API_KEY" \
+        -H "Notion-Version: 2022-06-28" \
+        -H "Content-Type: application/json" \
+        -d "$payload"
+    )"
+    top_id="$(printf '%s' "$resp" | jq -r '.results[0].id // empty')"
+  fi
+
+  [ -n "${top_id:-}" ] && return 0
+  return 1
 }
 
-# --- CLI parsing --------------------------------------------------
-
-# Execution Mode Hierarchy (Operator-Facing)
-# qtlog.sh
-# ├── --help
-# ├── --log (default)
-# │   ├── local | notion | both
-# ├── --todo
-# ├── --dry-run
-# ├── --reconcile
-# └── --offline / --no-git
-#
-# NOTE: This hierarchy is duplicated in --help output intentionally.
-# Any change here MUST be reflected in help and CHANGELOG.
+### QTLOG_ENSURE_TODAY_TOP_OPT ###
+# Termux startup helper: ensure today's Day __TOP__ exists, then exit
+if [[ "${1:-}" == "--ensure-today-top" ]]; then
+  ensure_today_top || exit 1
+  exit 0
+fi
+# ------------------------------------------------------------------
 
 NO_GIT="$QTLOG_DISABLE_GIT"
 WANT_COMMIT=0
@@ -214,6 +364,7 @@ OVERRIDE_DEVICE=""
 STAMP_NOW=0
 RECONCILE=0
 LKG_MODE=0
+  LOG_MODE_EXPLICIT=0
 VERIFY_ONLY=0
 
 
@@ -289,20 +440,34 @@ while [ $# -gt 0 ]; do
       ;;
     --notion)
       LOG_MODE=notion
+        LOG_MODE_EXPLICIT=1
       shift
       ;;
     --local)
       LOG_MODE=local
+        LOG_MODE_EXPLICIT=1
       shift
       ;;
     --git)
       LOG_MODE=git
+        LOG_MODE_EXPLICIT=1
       shift
       ;;
     --both)
       LOG_MODE=both
+        LOG_MODE_EXPLICIT=1
       shift
       ;;
+      --log)
+        shift
+        # Optional: allow --log <local|notion|git|both>
+        if [ $# -gt 0 ] && [[ "$1" =~ ^(local|notion|git|both)$ ]]; then
+          LOG_MODE="$1"
+          LOG_MODE_EXPLICIT=1
+          shift
+        fi
+        ;;
+
     -h|--help)
       usage
       exit 0
@@ -322,6 +487,22 @@ while [ $# -gt 0 ]; do
       ;;
   esac
 done
+
+  ### SOP_DEFAULTS_TO_BOTH + NOTION_GUARD ###
+  # SOP defaults to BOTH unless the user explicitly set LOG_MODE via flags.
+  # This ensures SOP entries are mirrored to Notion by default (traceability).
+  if [ "${#ARGS[@]}" -gt 0 ] && [ "${ARGS[0]}" = "sop" ] && [ "${LOG_MODE_EXPLICIT:-0}" -eq 0 ]; then
+    LOG_MODE="both"
+  fi
+
+  # Guard: warn when Notion logging is requested but missing config.
+  if [ "$LOG_MODE" = "notion" ] || [ "$LOG_MODE" = "both" ]; then
+    if [ -z "${NOTION_API_KEY:-}" ] || [ -z "${NOTION_LOG_PAGE_ID:-}" ]; then
+      echo "qtlog: WARNING: Notion logging requested but NOTION_API_KEY or NOTION_LOG_PAGE_ID is missing. Falling back to local." >&2
+      LOG_MODE="local"
+    fi
+  fi
+
 
 # --- BEGIN TODO DISPATCH (early exit) ---
 if [ "${TODO_MODE:-0}" -eq 1 ]; then
@@ -920,6 +1101,7 @@ echo "$ENTRY" >> "$LOG_FILE"
 
 # --- Notion helpers (SOP: newest-at-top, JSON-safe) ---
 write_notion_toggle() {
+  sop_env_check need_notion || return 1
   [ -z "${NOTION_API_KEY:-}" ] && return 0
   [ -z "${NOTION_LOG_PAGE_ID:-}" ] && return 0
 
@@ -1083,6 +1265,25 @@ write_notion_toggle() {
       }
     }]
   }')"
+
+### QTLOG_NOTION_ENTRY_PATCH ###
+    # 5) Write entry to Notion (PATCH children of day_id)
+    local resp new_id
+    resp="$(
+      curl -sS -X PATCH "https://api.notion.com/v1/blocks/${day_id}/children" \
+        -H "Authorization: Bearer $NOTION_API_KEY" \
+        -H "Notion-Version: 2022-06-28" \
+        -H "Content-Type: application/json" \
+        -d "$payload_entry"
+    )"
+    new_id="$(printf '%s' "$resp" | jq -r '.results[0].id // empty')"
+    if [ -z "${new_id:-}" ]; then
+      echo "qtlog: Notion log failed (entry insert returned no id)" >&2
+      printf '%s\n' "$resp" >&2
+      return 1
+    fi
+    echo "qtlog: Notion entry inserted id=$new_id" >&2
+    return 0
 
 }
 

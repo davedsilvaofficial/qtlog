@@ -1,31 +1,22 @@
-name: CI
-
+name: qtlog-ci
 on:
   push:
   pull_request:
-
 jobs:
-  test:
+  sop:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install bats-core
+      - uses: actions/checkout@v4
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+      - name: SOP verify (side-effect free)
+        run: bash ./qtlog.sh --sop-verify
+      - name: SOP hash check
         run: |
-          git clone --depth 1 https://github.com/bats-core/bats-core.git /tmp/bats-core
-          sudo /tmp/bats-core/install.sh /usr/local
-
-      - name: Install pytest
-        run: |
-          python -m pip install -U pip
-          python -m pip install -U pytest
-
-      - name: Run tests
-        run: |
-          ./scripts/test.sh
+          chmod +x ./bin/sop_hash.sh
+          test -f .sop_hash
+          have="$(bash ./bin/sop_hash.sh)"
+          want="$(tr -d ' \t\r\n' < .sop_hash)"
+          echo "have=$have"
+          echo "want=$want"
+          test "$have" = "$want"

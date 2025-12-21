@@ -1,0 +1,27 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+cd "$(git rev-parse --show-toplevel)" || exit 1
+
+echo "PRECOMMIT: ts=$(TZ=America/Toronto date '+%Y-%m-%d %H%M %Z')"
+echo "PRECOMMIT: verifying SOP invariants (no assumptions)"
+
+# 1) Must pass --sop-verify
+bash ./qtlog.sh --sop-verify >/dev/null
+
+# 2) SOP hash must match committed .sop_hash
+[ -f .sop_hash ] || { echo "PRECOMMIT_FAIL: missing .sop_hash (run: bin/sop_hash.sh > .sop_hash)" >&2; exit 1; }
+
+have="$(bash ./bin/sop_hash.sh)"
+want="$(tr -d ' \t\r\n' < .sop_hash)"
+
+[ -n "$have" ] || { echo "PRECOMMIT_FAIL: computed empty SOP hash" >&2; exit 1; }
+[ "$have" = "$want" ] || {
+  echo "PRECOMMIT_FAIL: SOP hash mismatch" >&2
+  echo "  have=$have" >&2
+  echo "  want=$want" >&2
+  echo "Fix: bash ./bin/sop_hash.sh > .sop_hash  (then git add .sop_hash)" >&2
+  exit 1
+}
+
+echo "PRECOMMIT_OK"
