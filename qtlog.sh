@@ -72,10 +72,13 @@ HELP
 
 # --- STAMP & RECONCILE HELPERS ---
 if [[ "${1:-}" == "--stamp-now" ]]; then
-    TZ="America/New_York" date "+%Y-%m-%d %H:%M:%S ET"
-    exit 0
+  if [ $# -ne 1 ]; then
+    echo "qtlog: --stamp-now takes no arguments" >&2
+    exit 1
+  fi
+  TZ=America/Toronto date '+%Y-%m-%d %H:%M:%S %Z'
+  exit 0
 fi
-
 if [[ "${1:-}" == "--reconcile" ]]; then
     echo "--- Time Reconciliation Audit ---"
     echo "System Time: $(date)"
@@ -568,6 +571,7 @@ WANT_COMMIT=0
 DRY_RUN=0
 OVERRIDE_DEVICE=""
 STAMP_NOW=0
+STAMP_AND_LOG=0
 RECONCILE=0
 LKG_MODE=0
   LOG_MODE_EXPLICIT=0
@@ -616,9 +620,18 @@ while [ $# -gt 0 ]; do
       shift
       ;;
     --stamp-now)
+      if [ $# -ne 1 ]; then
+        echo "qtlog: --stamp-now takes no arguments" >&2
+        exit 1
+      fi
       STAMP_NOW=1
       shift
       ;;
+    --stamp-and-log)
+      STAMP_AND_LOG=1
+      shift
+      ;;
+
     --reconcile)
       RECONCILE=1
       shift
@@ -707,6 +720,16 @@ while [ $# -gt 0 ]; do
       ;;
   esac
 done
+
+
+  # Convenience: print authoritative ET timestamp and then proceed with normal logging.
+  if [ "${STAMP_AND_LOG:-0}" -eq 1 ]; then
+    if [ "${#ARGS[@]}" -eq 0 ]; then
+      echo "qtlog: --stamp-and-log requires a message" >&2
+      exit 1
+    fi
+    TZ=America/Toronto date '+%Y-%m-%d %H:%M:%S %Z'
+  fi
 
   ### SOP_DEFAULTS_TO_BOTH + NOTION_GUARD ###
   # SOP defaults to BOTH unless the user explicitly set LOG_MODE via flags.
