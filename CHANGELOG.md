@@ -1,5 +1,13 @@
 ## [2025-12-21] SOP Enforcement & Zero-Assumption Runtime Gate
 
+
+## 2025-12-21
+
+- Notion Log ordering fix: day-level `__TOP__` marker; SOP timeline inserts after `__TOP__`; `ensure_today_top` creates `__TOP__` only.
+- CLI: hard-guard `--stamp-now` (no args) and add `--stamp-and-log`.
+- CI: add qtlog CLI smoke tests.
+
+
 **Commit:** `e7990b9`
 
 ### Added

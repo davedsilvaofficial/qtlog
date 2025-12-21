@@ -7,6 +7,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: qtlog CLI smoke
+        shell: bash
+        run: |
+          bash -n ./qtlog.sh
+          # --stamp-now must refuse args
+          if bash ./qtlog.sh --stamp-now "oops" >/dev/null 2>&1; then
+            echo "ERROR: --stamp-now accepted args"
+            exit 1
+          fi
+          # --stamp-and-log requires a message
+          if bash ./qtlog.sh --stamp-and-log >/dev/null 2>&1; then
+            echo "ERROR: --stamp-and-log accepted empty message"
+            exit 1
+          fi
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
       - name: SOP verify (side-effect free)

@@ -54,7 +54,7 @@ Usage:
 Options:
   --log <msg>       (Default) Log message to Filesystem/Notion
   --todo <item>     Add item to Notion ToDo Vault
-  --stamp-now       Print authoritative ET timestamp
+  --stamp-now       Print authoritative ET timestamp (no arguments)
   --reconcile       Audit system, git, and qtlog clocks
   --verify-all      Read-only check of Notion anchors
   --dry-run         Preview actions without execution
