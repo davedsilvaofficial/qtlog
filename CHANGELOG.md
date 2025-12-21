@@ -1,3 +1,27 @@
+## [2025-12-21] SOP Enforcement & Zero-Assumption Runtime Gate
+
+**Commit:** `e7990b9`
+
+### Added
+- Global SOP runtime gate (`sop_env_check`) enforcing Termux / repo / env invariants
+- Strict Notion operation gating (`need_notion`)
+- Automatic creation of daily `__TOP__` toggle in Notion logs
+- Best-effort SOP failure logging to Notion (non-blocking observability)
+- `--sop-verify` mode (side-effect free validation)
+- SOP hash generation (`bin/sop_hash.sh`)
+- Pre-commit hook enforcing SOP invariants and hash integrity
+- GitHub Actions CI workflow validating SOP invariants on every push/PR
+
+### Changed
+- All Notion-writing paths now fail fast on missing prerequisites
+- Script execution now refuses to run under invalid environments
+
+### Design Principle
+**NO ASSUMPTIONS.**  
+Every dependency is verified before side effects occur. SOP violations are fatal; observability failures are not.
+
+---
+
 # CHANGELOG
 
 ## Discipline (Daily Use)

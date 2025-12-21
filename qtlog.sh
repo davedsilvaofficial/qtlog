@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-# ==============================================================================
+# ==============================================================================# SOP_CHANGELOG_REF:
+#   Commit e7990b9 — SOP enforcement: global gate, Notion fail logging,
+#   ensure __TOP__, SOP hash + hooks + CI
+#
+
 # QTLOG — RUNTIME SOP ENFORCEMENT (NO ASSUMPTIONS)
 #
 # This script is guarded by a GLOBAL SOP GATE.
