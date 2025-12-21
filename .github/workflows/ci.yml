@@ -11,6 +11,43 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y jq
       - name: SOP verify (side-effect free)
         run: bash ./qtlog.sh --sop-verify
+      - name: Changelog policy (SOP-critical changes must update CHANGELOG.md)
+        shell: bash
+        run: |
+          set -euo pipefail
+          base=""
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base="${{ github.event.pull_request.base.sha }}"
+          else
+            # push: compare against previous commit when available
+            base="${{ github.event.before }}"
+          fi
+
+          echo "base=$base"
+          echo "head=${{ github.sha }}"
+
+          if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ]; then
+            echo "No base SHA available; skipping changelog policy check."
+            exit 0
+          fi
+
+          changed="$(git diff --name-only "$base" "${{ github.sha }}" || true)"
+          echo "Changed files:"
+          echo "$changed"
+
+          sop_critical=0
+          echo "$changed" | grep -E '^(qtlog\.sh|\.githooks/pre-commit|\.sop_hash|bin/sop_hash\.sh|\.github/workflows/ci\.yml)$' >/dev/null 2>&1 && sop_critical=1
+
+          if [ "$sop_critical" -eq 1 ]; then
+            echo "$changed" | grep -E '^CHANGELOG\.md$' >/dev/null 2>&1 || {
+              echo "FAIL: SOP-critical change detected but CHANGELOG.md was not updated."
+              exit 1
+            }
+          fi
+
+          echo "OK: changelog policy satisfied"
+
+
       - name: SOP hash check
         run: |
           chmod +x ./bin/sop_hash.sh

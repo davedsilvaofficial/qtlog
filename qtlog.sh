@@ -121,6 +121,51 @@ fi
 # Violation of this SOP = rejected patch.
 
 
+# ------------------------------------------------------------------------------
+# PROJECT / PM LOGGING SOP (MANDATORY, NON-NEGOTIABLE)
+#
+# This section defines ALL invariants for Notion-based project logging.
+# Any patch that alters logging behavior MUST re-verify every rule below.
+#
+# LOG STRUCTURE
+# -------------
+# - All daily logs live under: Log → YYYY-MM-DD → __TOP__
+# - __TOP__ is a container ONLY. It never holds raw paragraphs.
+#
+# ENTRY TYPE
+# ----------
+# - ALL project / SOP timeline entries MUST be TOGGLE blocks
+# - Paragraphs are ONLY allowed as children of a toggle
+#
+# TITLE FORMAT (STRICT)
+# ---------------------
+# - Toggle title MUST be:
+#     YYYY-MM-DD HHMM <description>
+# - Time is America/Toronto
+# - HHMM is minute-precision, zero-padded
+#
+# ORDERING (CRITICAL INVARIANT)
+# -----------------------------
+# - Newest entries MUST appear at the TOP of __TOP__
+# - API default append order MUST NOT be relied upon
+# - Implementations MUST explicitly insert newest-first
+# - If Notion API lacks "before", a pinned anchor strategy MUST be used
+#
+# DEDUPLICATION
+# -------------
+# - Minute-level de-dupe is REQUIRED
+# - If an entry exists with the same YYYY-MM-DD HHMM prefix, do nothing
+#
+# CHANGE DISCIPLINE
+# -----------------
+# - Before modifying any logging code:
+#     1) Locate this SOP
+#     2) Verify ALL invariants above still hold
+#     3) Abort patch if any invariant would be violated
+#
+# VIOLATION OF THIS SECTION = REGRESSION
+# ------------------------------------------------------------------------------
+
 ### QTLOG_SOP_ENV_CHECK ###
 sop_env_check() {
   local fail=0
@@ -232,6 +277,159 @@ sop_fail_notion_log() {
   return 0
 }
 
+
+### QTLOG_SOP_TIMELINE_SYNC ###
+# Notion SOP Timeline auto-sync (writes a TOGGLE under today (after __TOP__) in the Log)
+# Strictly gated: caller must have already satisfied:
+#   sop_env_check need_notion
+#   ensure_today_top
+sop_sync_notion_timeline() {
+  local ts device pwdp gitref msg payload log_h1_id day_id top_id resp new_id today title
+
+  ts="$(TZ=America/Toronto date '+%Y-%m-%d %H%M %Z')"
+  device="$(getprop ro.product.model 2>/dev/null || echo 'UNKNOWN')"
+  pwdp="$(pwd -P)"
+
+  gitref="UNKNOWN"
+  if command -v git >/dev/null 2>&1; then
+    gitref="$(git rev-parse --short HEAD 2>/dev/null || echo UNKNOWN)"
+  fi
+
+  # Find Log H1
+  log_h1_id="$(
+    curl -sS "https://api.notion.com/v1/blocks/${NOTION_LOG_PAGE_ID}/children?page_size=200" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28" |
+    jq -r '.results[]? | select(.type=="heading_1") | select((.heading_1.rich_text[0].plain_text // "")=="Log") | .id' | head -n1
+  )"
+  [ -n "${log_h1_id:-}" ] || { echo "qtlog: SOP timeline sync failed: cannot find Log H1" >&2; return 1; }
+
+  # Find today's toggle
+  today="$(TZ=America/Toronto date '+%Y-%m-%d')"
+  day_id="$(
+    curl -sS "https://api.notion.com/v1/blocks/${log_h1_id}/children?page_size=200" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28" |
+    jq -r --arg d "$today" '.results[]? | select(.type=="toggle") | select((.toggle.rich_text[0].plain_text // "")==$d) | .id' | head -n1
+  )"
+  [ -n "${day_id:-}" ] || { echo "qtlog: SOP timeline sync failed: cannot find day toggle=$today" >&2; return 1; }
+
+  # Find __TOP__ under today
+  top_id="$(
+    curl -sS "https://api.notion.com/v1/blocks/${day_id}/children?page_size=200" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28" |
+    jq -r '.results[]? | select(.type=="toggle") | select((.toggle.rich_text|map(.plain_text)|join(""))=="__TOP__") | .id' | head -n1
+  )"
+  [ -n "${top_id:-}" ] || { echo "qtlog: SOP timeline sync failed: cannot find __TOP__ toggle" >&2; return 1; }
+
+  # SOP_DAY_TOP_ENFORCE: __TOP__ MUST be the first child under the day.
+  # If not, refuse to write (prevents silent ordering regression).
+  local first_child_text
+  first_child_text="$(
+    curl -sS "https://api.notion.com/v1/blocks/${day_id}/children?page_size=1" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28" |
+    jq -r '.results[0] // empty | if .type=="toggle" then (.toggle.rich_text|map(.plain_text)|join("")) else "" end'
+  )"
+  if [ "${first_child_text:-}" != "__TOP__" ]; then
+    echo "qtlog: SOP ORDER VIOLATION: first child under day is not __TOP__ (first_child='${first_child_text:-EMPTY}')." >&2
+    echo "qtlog: ACTION REQUIRED (one-time): In Notion, drag __TOP__ to be the FIRST item under the day toggle." >&2
+    return 1
+  fi
+
+  # SOP de-dupe by minute: if a SOP Timeline toggle for this minute already exists under the DAY, do nothing.
+  # We match by prefix: "YYYY-MM-DD HHMM " (minute-level)
+  local hhmm prefix exists
+  hhmm="$(TZ=America/Toronto date '+%H%M')"
+  prefix="${today} ${hhmm} "
+
+  exists="$(
+    curl -sS "https://api.notion.com/v1/blocks/${day_id}/children?page_size=200" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28" |
+    jq -r --arg p "$prefix" '
+      [.results[]? | select(.type=="toggle") | (.toggle.rich_text|map(.plain_text)|join("")) | select(. != "__TOP__")] | map(startswith($p)) | any
+    ' 2>/dev/null || echo false
+  )"
+  if [ "${exists:-false}" = "true" ]; then
+    echo "qtlog: SOP timeline already present for ${today} ${hhmm} (de-dupe)" >&2
+    return 0
+  fi
+
+
+    # Compute SOP_VERSION locally if missing/UNKNOWN (ties to .sop_hash)
+  if [ -z "${SOP_VERSION:-}" ] || [ "${SOP_VERSION:-}" = "UNKNOWN" ]; then
+    SOP_VERSION="$(tr -d " \t\r\n" < .sop_hash 2>/dev/null || echo UNKNOWN)"
+  fi
+
+msg="$(
+    cat <<EOF
+SOP_TIMELINE ${ts}
+- device=${device}
+- pwd=${pwdp}
+- VERSION=${VERSION:-UNKNOWN}
+- SOP_VERSION=${SOP_VERSION:-UNKNOWN}
+- git=${gitref}
+- layers=qtlog.sh(header), qtlog.sh(CODING_SOP), CHANGELOG.md, hooks+hash+CI
+EOF
+  )"
+
+  # Toggle title (short; details live inside)
+  title="${today} $(TZ=America/Toronto date '+%H%M') SOP Timeline"
+  # Create a TOGGLE under __TOP__, with msg as a child paragraph
+    # Insert at TOP (newest-first): use Notion "after" with current first child id under __TOP__
+  # Insert newest-first UNDER THE DAY by inserting immediately AFTER __TOP__.
+  # __TOP__ is a pinned separator ONLY; entries are siblings under the day.
+  payload="$(jq -nc --arg t "$title" --arg m "$msg" --arg after "${top_id:-}" '
+    if ($after|length) > 0 then
+      {
+        after: $after,
+        children:[{
+          object:"block",
+          type:"toggle",
+          toggle:{
+            rich_text:[{type:"text",text:{content:$t}}],
+            children:[{
+              object:"block",
+              type:"paragraph",
+              paragraph:{rich_text:[{type:"text",text:{content:$m}}]}
+            }]
+          }
+        }]
+      }
+    else
+      {
+        children:[{
+          object:"block",
+          type:"toggle",
+          toggle:{
+            rich_text:[{type:"text",text:{content:$t}}],
+            children:[{
+              object:"block",
+              type:"paragraph",
+              paragraph:{rich_text:[{type:"text",text:{content:$m}}]}
+            }]
+          }
+        }]
+      }
+    end
+  ')"
+  resp="$(
+    curl -sS -X PATCH "https://api.notion.com/v1/blocks/${day_id}/children" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28" \
+      -H "Content-Type: application/json" \
+      -d "$payload"
+  )" || return 1
+
+  new_id="$(printf '%s' "$resp" | jq -r '.results[0].id // empty')"
+  [ -n "${new_id:-}" ] || { echo "qtlog: SOP timeline sync failed: no result id" >&2; return 1; }
+  echo "qtlog: SOP timeline synced toggle id=$new_id" >&2
+  return 0
+}
+
+
 ### QTLOG_SOP_ENV_CHECK_CALL ###
 # SOP verify mode: print checks, then exit (0=pass, 1=fail)
 if [[ "${1:-}" == "--sop-verify" ]]; then
@@ -307,6 +505,8 @@ ensure_today_top() {
   # If day toggle doesn't exist, create it
   if [ -z "${day_id:-}" ]; then
     payload="$(jq -nc --arg d "$today" '{children:[{object:"block",type:"toggle",toggle:{rich_text:[{type:"text",text:{content:$d}}],children:[]}}]}')"
+    
+    
     resp="$(
       curl -sS -X PATCH "https://api.notion.com/v1/blocks/${log_h1_id}/children" \
         -H "Authorization: Bearer $NOTION_API_KEY" \
@@ -325,13 +525,14 @@ ensure_today_top() {
       -H "Notion-Version: 2022-06-28" | \
     jq -r '.results[]? | select(.type=="toggle") | select((.toggle.rich_text|map(.plain_text)|join(""))=="__TOP__") | .id' | head -n1
   )"
-
   if [ -z "${top_id:-}" ]; then
     first_id="$(
       curl -sS "https://api.notion.com/v1/blocks/${day_id}/children?page_size=1" \
         -H "Authorization: Bearer $NOTION_API_KEY" \
         -H "Notion-Version: 2022-06-28" | jq -r '.results[0].id // empty'
     )"
+
+    # Create ONLY __TOP__ (no children inside)
     payload="$(jq -nc --arg after "${first_id:-}" '
       if ($after|length) > 0 then
         {after:$after, children:[{object:"block",type:"toggle",toggle:{rich_text:[{type:"text",text:{content:"__TOP__"}}],children:[]}}]}
@@ -339,6 +540,7 @@ ensure_today_top() {
         {children:[{object:"block",type:"toggle",toggle:{rich_text:[{type:"text",text:{content:"__TOP__"}}],children:[]}}]}
       end
     ')"
+
     resp="$(
       curl -sS -X PATCH "https://api.notion.com/v1/blocks/${day_id}/children" \
         -H "Authorization: Bearer $NOTION_API_KEY" \
@@ -346,9 +548,9 @@ ensure_today_top() {
         -H "Content-Type: application/json" \
         -d "$payload"
     )"
+
     top_id="$(printf '%s' "$resp" | jq -r '.results[0].id // empty')"
   fi
-
   [ -n "${top_id:-}" ] && return 0
   return 1
 }
@@ -480,6 +682,20 @@ while [ $# -gt 0 ]; do
       shift
       break
       ;;
+
+      --sop-version)
+        SOP_VERSION="$(tr -d " \t\r\n" < .sop_hash 2>/dev/null || echo UNKNOWN)"
+        echo "VERSION=${VERSION:-UNKNOWN}"
+        echo "SOP_VERSION=${SOP_VERSION:-UNKNOWN}"
+        exit 0
+        ;;
+
+      --sync-sop-timeline)
+        sop_env_check need_notion || exit 1
+        ensure_today_top || exit 1
+        sop_sync_notion_timeline || exit 1
+        exit 0
+        ;;
     -*)
       echo "qtlog: unknown option: $1" >&2
       echo "Try: qtlog.sh --help" >&2
