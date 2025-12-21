@@ -56,6 +56,7 @@ Options:
   --todo <item>     Add item to Notion ToDo Vault
   --stamp-now       Print authoritative ET timestamp (no arguments)
   --reconcile       Audit system, git, and qtlog clocks
+  --status         Read-only diagnostics (repo/env/Notion/log) then exit
   --verify-all      Read-only check of Notion anchors
   --dry-run         Preview actions without execution
   --offline         Disable all git operations
@@ -558,6 +559,102 @@ ensure_today_top() {
   return 1
 }
 
+
+### QTLOG_STATUS ###
+# Read-only diagnostics. No writes to Notion, no file writes, no git writes.
+status_report() {
+  local ts today repo_dir log_dir log_file last_line gitref dirty envfile
+  ts="$(TZ=America/Toronto date '+%Y-%m-%d %H%M %Z')"
+  today="$(TZ=America/Toronto date '+%Y-%m-%d')"
+
+  # Repo dir (prefer known repo path, else current)
+  if [ -d "$HOME/qtlog_repo" ] && [ -f "$HOME/qtlog_repo/qtlog.sh" ]; then
+    repo_dir="$HOME/qtlog_repo"
+  else
+    repo_dir="$(pwd -P)"
+  fi
+
+  # Log dir (prefer computed vars if present)
+  log_dir="${QTLOG_LOG_DIR:-$repo_dir/Log}"
+  log_file="$log_dir/${today}.log"
+
+  echo "QTLOG_STATUS: ts=$ts"
+  echo "QTLOG_STATUS: repo_dir=$repo_dir"
+  echo "QTLOG_STATUS: version=${VERSION:-UNKNOWN}"
+  echo "QTLOG_STATUS: sop_version=${SOP_VERSION:-UNKNOWN}"
+
+  # Git info (read-only)
+  if command -v git >/dev/null 2>&1 && git -C "$repo_dir" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    gitref="$(git -C "$repo_dir" rev-parse --short HEAD 2>/dev/null || echo UNKNOWN)"
+    dirty="$(git -C "$repo_dir" status --porcelain 2>/dev/null | wc -l | tr -d ' ')"
+    echo "QTLOG_STATUS: git=$gitref dirty_files=$dirty"
+  else
+    echo "QTLOG_STATUS: git=UNAVAILABLE"
+  fi
+
+  # Env file presence
+  envfile="$HOME/.config/qt/.env"
+  if [ -f "$envfile" ]; then
+    echo "QTLOG_STATUS: envfile=OK ($envfile)"
+  else
+    echo "QTLOG_STATUS: envfile=MISSING ($envfile)"
+  fi
+
+  # Local log
+  if [ -f "$log_file" ]; then
+    last_line="$(tail -n 1 "$log_file" 2>/dev/null || true)"
+    echo "QTLOG_STATUS: local_log=OK ($log_file)"
+    echo "QTLOG_STATUS: local_log_last_line=${last_line}"
+  else
+    echo "QTLOG_STATUS: local_log=MISSING ($log_file)"
+  fi
+
+  # Optional: last Notion ids if you store them
+  if [ -f "$repo_dir/.last_notion_id" ]; then
+    echo "QTLOG_STATUS: last_notion_id=$(cat "$repo_dir/.last_notion_id" 2>/dev/null | tr -d '\r\n')"
+  else
+    echo "QTLOG_STATUS: last_notion_id=UNKNOWN (no $repo_dir/.last_notion_id)"
+  fi
+  if [ -f "$repo_dir/.last_sop_timeline_id" ]; then
+    echo "QTLOG_STATUS: last_sop_timeline_id=$(cat "$repo_dir/.last_sop_timeline_id" 2>/dev/null | tr -d '\r\n')"
+  else
+    echo "QTLOG_STATUS: last_sop_timeline_id=UNKNOWN (no $repo_dir/.last_sop_timeline_id)"
+  fi
+
+  # Notion (read-only checks)
+  if [ -n "${NOTION_API_KEY:-}" ] && [ -n "${NOTION_LOG_PAGE_ID:-}" ] && command -v curl >/dev/null 2>&1 && command -v jq >/dev/null 2>&1; then
+    echo "QTLOG_STATUS: notion_creds=OK"
+    # Find today's day toggle id (best-effort, first 200 children)
+    local day_id day_first_title
+    day_id="$(
+      curl -sS "https://api.notion.com/v1/blocks/${NOTION_LOG_PAGE_ID}/children?page_size=200" \
+        -H "Authorization: Bearer $NOTION_API_KEY" \
+        -H "Notion-Version: 2022-06-28" | \
+      jq -r --arg today "$today" '.results[]? | select(.type=="toggle") | select((.toggle.rich_text|map(.plain_text)|join(""))==$today) | .id' | head -n1
+    )"
+    if [ -n "${day_id:-}" ]; then
+      echo "QTLOG_STATUS: notion_day_id=$day_id"
+      day_first_title="$(
+        curl -sS "https://api.notion.com/v1/blocks/${day_id}/children?page_size=1" \
+          -H "Authorization: Bearer $NOTION_API_KEY" \
+          -H "Notion-Version: 2022-06-28" | \
+        jq -r '(.results[0] | select(.type=="toggle") | (.toggle.rich_text|map(.plain_text)|join(""))) // ""'
+      )"
+      if [ "$day_first_title" = "__TOP__" ]; then
+        echo "QTLOG_STATUS: notion_top_first=YES"
+      else
+        echo "QTLOG_STATUS: notion_top_first=NO (first_child_title='${day_first_title}')"
+      fi
+    else
+      echo "QTLOG_STATUS: notion_day_id=NOT_FOUND (today=$today)"
+    fi
+  else
+    echo "QTLOG_STATUS: notion_creds=MISSING_OR_DEPS_MISSING"
+  fi
+
+  return 0
+}
+
 ### QTLOG_ENSURE_TODAY_TOP_OPT ###
 # Termux startup helper: ensure today's Day __TOP__ exists, then exit
 if [[ "${1:-}" == "--ensure-today-top" ]]; then
@@ -572,6 +669,7 @@ DRY_RUN=0
 OVERRIDE_DEVICE=""
 STAMP_NOW=0
 STAMP_AND_LOG=0
+STATUS_ONLY=0
 RECONCILE=0
 LKG_MODE=0
   LOG_MODE_EXPLICIT=0
@@ -631,8 +729,14 @@ while [ $# -gt 0 ]; do
       STAMP_AND_LOG=1
       shift
       ;;
-
     --reconcile)
+      RECONCILE=1
+      shift
+      ;;
+    --status)
+      STATUS_ONLY=1
+      shift
+      ;;
       RECONCILE=1
       shift
       ;;
@@ -721,6 +825,13 @@ while [ $# -gt 0 ]; do
   esac
 done
 
+
+
+  # Read-only status and exit
+  if [ "${STATUS_ONLY:-0}" -eq 1 ]; then
+    status_report
+    exit $?
+  fi
 
   # Convenience: print authoritative ET timestamp and then proceed with normal logging.
   if [ "${STAMP_AND_LOG:-0}" -eq 1 ]; then
