@@ -44,3 +44,7 @@ qtlog-cei.patch
 qtlog.sh.cei-*
 qtlog.sh.pre-device-guard
 qtlog.sh.device-guard
+
+# Python
+__pycache__/
+*.pyc

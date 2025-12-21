@@ -1,3 +1,10 @@
+## Daily bootstrap (qtday)
+
+- `qtday` prepares the day (Log + ToDo) and runs `--verify-all`.
+- Termux auto-runs `qtday` once per day + first interactive shell per session (with optional debug messages).
+
+See: `docs/qtlog.md`
+
 ![version](https://img.shields.io/badge/version-v1.2.2-blue)
 
 ```# qtlog — Quantum Trek Logging
@@ -71,3 +78,9 @@ Only the contents of the `/public` directory are intended to be used for:
 
 Everything else in this repository is considered **private, operational, or sensitive** and must never be published verbatim.
 
+
+## Tests
+
+Run:
+- `./scripts/test.sh`
+- or `make test`

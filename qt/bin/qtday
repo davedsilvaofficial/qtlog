@@ -1,0 +1,96 @@
+#!/data/data/com.termux/files/usr/bin/bash
+set -euo pipefail
+
+# qtday: daily bootstrap helper for qtlog_repo (Termux)
+# Supports:
+#   qtday --status   (no side effects)
+#   qtday --run      (bootstrap + verify; respects session+day stamps)
+#   qtday            (same as --run)
+#
+# Testability knobs (optional env overrides):
+#   QTDAY_SESS_FILE   (default: /data/data/com.termux/files/usr/tmp/qt/qtday.session)
+#   QTDAY_STAMP_FILE  (default: $HOME/.config/qt/qtday.last)
+#   QTDAY_REPO_DIR    (default: $HOME/qtlog_repo)
+#   QTDAY_ENV_FILE    (default: $HOME/.config/qt/.env)
+#   QTDAY_TZ          (default: America/Toronto)
+
+tz="${QTDAY_TZ:-America/Toronto}"
+
+sess_file="${QTDAY_SESS_FILE:-/data/data/com.termux/files/usr/tmp/qt/qtday.session}"
+stamp_file="${QTDAY_STAMP_FILE:-$HOME/.config/qt/qtday.last}"
+repo_dir="${QTDAY_REPO_DIR:-$HOME/qtlog_repo}"
+env_file="${QTDAY_ENV_FILE:-$HOME/.config/qt/.env}"
+
+stamp_dir="$(dirname "$stamp_file")"
+sess_dir="$(dirname "$sess_file")"
+
+today="$(TZ="$tz" date +%Y-%m-%d 2>/dev/null || true)"
+last="$(cat "$stamp_file" 2>/dev/null || true)"
+
+sess_mark="missing"
+[ -f "$sess_file" ] && sess_mark="present"
+
+decision_preview() {
+  if [ "$sess_mark" = "present" ]; then
+    echo "skip - already ran this session"
+  elif [ -z "$today" ]; then
+    echo "skip - cannot read today date"
+  elif [ "$last" = "$today" ]; then
+    echo "skip - already ran today ($last)"
+  else
+    echo "would run - first shell this session and not yet run today"
+  fi
+}
+
+case "${1:-}" in
+  --status)
+    echo "qtday status"
+    echo "-----------"
+    echo "today:           ${today:-UNKNOWN}"
+    echo "qtday.last:      ${last:-EMPTY}"
+    echo "session marker:  ${sess_mark}"
+    echo "qtday path:      ${0}"
+    echo "repo dir:        ${repo_dir}"
+    echo "env file:        ${env_file}"
+    echo "decision:        $(decision_preview)"
+    exit 0
+    ;;
+  --run|"")
+    mkdir -p "$sess_dir" 2>/dev/null || true
+    mkdir -p "$stamp_dir" 2>/dev/null || true
+
+    # First interactive shell per Termux session gate:
+    if [ -f "$sess_file" ]; then
+      echo "qtday: skip - already ran this session" >&2
+      exit 0
+    fi
+    : > "$sess_file" 2>/dev/null || true
+
+    # Once-per-day gate:
+    if [ -z "$today" ]; then
+      echo "qtday: skip - cannot read today date" >&2
+      exit 0
+    fi
+    if [ "$last" = "$today" ]; then
+      echo "qtday: skip - already ran today ($last)" >&2
+      exit 0
+    fi
+
+    echo "$today" > "$stamp_file" 2>/dev/null || true
+
+    cd "$repo_dir"
+    # shellcheck disable=SC1090
+    . "$env_file"
+    ./qtlog.sh sop "bootstrap day"
+    ./qtlog.sh --todo "bootstrap day"
+    ./qtlog.sh --verify-all
+
+    echo "qtday: ran - $today $(TZ="$tz" date '+%H%M ET')" >&2
+    exit 0
+    ;;
+  *)
+    echo "qtday: unknown option: $1" >&2
+    echo "usage: qtday [--status|--run]" >&2
+    exit 2
+    ;;
+esac
