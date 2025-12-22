@@ -1,5 +1,5 @@
 # 🚀 Quantum Trek Master Index
-### Last Updated: 2025-12-21 21:43:09 ET
+### Last Updated: 2025-12-21 21:45:03 ET
 ---
 This index serves as the official directory for the Quantum Trek Private Placement Memorandum (PPM) and Technical Data Room.
 
@@ -18,6 +18,7 @@ This index serves as the official directory for the Quantum Trek Private Placeme
 
 ## 03 Technical
 * [ARC_REACTOR_OVERVIEW.md](./docs/03_Technical/ARC_REACTOR_OVERVIEW.md)
+* [PHD_LEAD_RESEARCHER_JD.md](./docs/03_Technical/PHD_LEAD_RESEARCHER_JD.md)
 * [QT-Coding-SOP.md](./docs/03_Technical/QT-Coding-SOP.md)
 * [SOFTWARE_INVENTORY.md](./docs/03_Technical/SOFTWARE_INVENTORY.md)
 * [qtlog.md](./docs/03_Technical/qtlog.md)
