@@ -1,5 +1,5 @@
 # 🚀 Quantum Trek Master Index
-### Last Updated: 2025-12-21 21:38:43 ET
+### Last Updated: 2025-12-21 21:43:09 ET
 ---
 This index serves as the official directory for the Quantum Trek Private Placement Memorandum (PPM) and Technical Data Room.
 
@@ -12,6 +12,7 @@ This index serves as the official directory for the Quantum Trek Private Placeme
 * [NDA_REQUIREMENT.md](./docs/01_Legal/NDA_REQUIREMENT.md)
 
 ## 02 Finance
+* [PHD_BUDGET_USE_OF_PROCEEDS.md](./docs/02_Finance/PHD_BUDGET_USE_OF_PROCEEDS.md)
 * [SEC-Filing-Notes.md](./docs/02_Finance/SEC-Filing-Notes.md)
 * [USE_OF_PROCEEDS_SUMMARY.md](./docs/02_Finance/USE_OF_PROCEEDS_SUMMARY.md)
 
