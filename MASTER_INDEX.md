@@ -1,5 +1,5 @@
 # 🚀 Quantum Trek Master Index
-### Last Updated: 2025-12-21 16:11:04 ET
+### Last Updated: 2025-12-21 21:38:43 ET
 ---
 This index serves as the official directory for the Quantum Trek Private Placement Memorandum (PPM) and Technical Data Room.
 
@@ -22,6 +22,7 @@ This index serves as the official directory for the Quantum Trek Private Placeme
 * [qtlog.md](./docs/03_Technical/qtlog.md)
 
 ## 04 Defense
+* [DND_CAPABILITY_STATEMENT.md](./docs/04_Defense/DND_CAPABILITY_STATEMENT.md)
 * [DND_ENGAGEMENT_STRATEGY.md](./docs/04_Defense/DND_ENGAGEMENT_STRATEGY.md)
 
 ---

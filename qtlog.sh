@@ -32,6 +32,8 @@
 # -----------------------------------------------------------------------------
 
 export TZ=America/Toronto
+QTLOG_REPO_DIR="${QTLOG_REPO_DIR:-$(cd "$(dirname "$0")" && pwd -P)}"
+
 VERSION="1.3.2"
 
 
@@ -228,7 +230,7 @@ if [[ "${1:-}" == "-h" ]] || [[ "${1:-}" == "--help" ]]; then
     usage
     exit 0
 fi
-NO_GIT="$QTLOG_DISABLE_GIT"
+NO_GIT="${QTLOG_DISABLE_GIT:-0}"
 WANT_COMMIT=0
 DRY_RUN=0
 OVERRIDE_DEVICE=""
@@ -1303,6 +1305,20 @@ fi
 
 
 
+
+confirm_commit() {
+  # Non-interactive: commit only if something changed.
+  # Return 0 to proceed; return 1 to skip commit/push.
+  if command -v git >/dev/null 2>&1; then
+    if [ "$(git status --porcelain 2>/dev/null | wc -l | tr -d " ")" -eq 0 ]; then
+      echo "qtlog: nothing changed; skipping commit/push"
+      return 1
+    fi
+    return 0
+  fi
+  return 1
+}
+
 # --- Git sync -----------------------------------------------------
 cd "$QTLOG_REPO_DIR"
 
@@ -1316,6 +1332,11 @@ fi
 echo "qtlog: pulling latest changes..."
 if ! git pull --rebase; then
   echo "qtlog: warning: pull failed; continuing with local copy"
+fi
+if git check-ignore -q "$LOG_FILE" 2>/dev/null; then
+  echo "qtlog: log file is gitignored ($LOG_FILE); skipping git commit/push"
+  echo "qtlog: logged to $LOG_FILE"
+  exit 0
 fi
 
 git add "$LOG_FILE"
