@@ -32,6 +32,91 @@
 # -----------------------------------------------------------------------------
 
 export TZ=America/Toronto
+VERSION="1.3.1"
+
+
+### QTLOG_CONFIG_BLOCK ###
+# SOP hash region: configuration + constants (keep stable / minimal here).
+
+
+### QTLOG_CODING_SOP ###
+
+### QTLOG_ENSURE_TODAY_TOP ###
+ensure_today_top() {
+  # Placeholder: full implementation may exist elsewhere in the script today.
+  # Kept as a named, hashable SOP region for restoring structured enforcement.
+  #
+  # Contract (future full impl):
+  # - Ensure today's day toggle exists under Log
+  # - Ensure __TOP__ exists and is FIRST child under the day
+  # - Return 0 if OK, non-zero if not OK
+  return 0
+}
+
+### QTLOG_SOP_FAIL_NOTION_LOG ###
+sop_fail_notion_log() {
+  # Best-effort observability ONLY. Must never block execution.
+  # NOTE: This is intentionally conservative; it will only attempt Notion I/O if creds+deps exist.
+  local msg="${1:-SOP failure}"
+  if [ -z "${NOTION_API_KEY:-}" ] || [ -z "${NOTION_LOG_PAGE_ID:-}" ]; then
+    return 0
+  fi
+  command -v curl >/dev/null 2>&1 || return 0
+  command -v jq   >/dev/null 2>&1 || return 0
+
+  # Placeholder: keep side effects minimal until a full Notion failure-note writer is reintroduced.
+  # (We keep the function + marker so SOP hash can track this region.)
+  echo "SOP_NOTE: $msg (Notion fail-note writer is stubbed)" >&2
+  return 0
+}
+
+### QTLOG_SOP_ENV_CHECK ###
+sop_env_check() {
+  local fail=0
+
+  echo "SOP_CHECK: ts=$(TZ=America/Toronto date '+%Y-%m-%d %H%M %Z')"
+  echo "SOP_CHECK: user=$USER home=$HOME pwd=$(pwd -P)"
+  echo "SOP_CHECK: termux_version=${TERMUX_VERSION:-MISSING} prefix=${PREFIX:-MISSING}"
+  echo "SOP_CHECK: device=$(getprop ro.product.model 2>/dev/null || echo 'UNKNOWN')"
+
+  # 1) Must be Termux (not proot)
+  if [ -z "${TERMUX_VERSION:-}" ] || [ -z "${PREFIX:-}" ]; then
+    echo "SOP_FAIL: not in a normal Termux session (TERMUX_VERSION/PREFIX missing)" >&2
+    fail=1
+  fi
+
+  # 2) Must be in repo
+  if [ ! -d "$HOME/qtlog_repo" ] || [ ! -f "$HOME/qtlog_repo/qtlog.sh" ]; then
+    echo "SOP_FAIL: repo missing at $HOME/qtlog_repo" >&2
+    fail=1
+  fi
+
+  # 3) Must have env
+  if [ ! -f "$HOME/.config/qt/.env" ]; then
+    echo "SOP_FAIL: missing envfile $HOME/.config/qt/.env" >&2
+    fail=1
+  fi
+
+  # 4) Must have Notion creds when doing Notion ops
+  if [ -n "${1:-}" ] && [ "$1" = "need_notion" ]; then
+    if [ -z "${NOTION_API_KEY:-}" ] || [ -z "${NOTION_LOG_PAGE_ID:-}" ]; then
+      echo "SOP_FAIL: NOTION_API_KEY / NOTION_LOG_PAGE_ID missing" >&2
+      fail=1
+    fi
+  fi
+
+  # 5) Must have curl/jq for Notion ops
+  if [ -n "${1:-}" ] && [ "$1" = "need_notion" ]; then
+    command -v curl >/dev/null 2>&1 || { echo "SOP_FAIL: curl missing" >&2; fail=1; }
+    command -v jq   >/dev/null 2>&1 || { echo "SOP_FAIL: jq missing" >&2; fail=1; }
+  fi
+
+  return $fail
+}
+# SOP hash region: coding rules + invariants (keep stable / minimal here).
+# - NO ASSUMPTIONS: verify dependencies before side effects
+# - Notion writes are gated via need_notion checks
+# - TZ fixed to America/Toronto
 
 # --- DYNAMIC DISCOVERY ---
 list_bin_commands() {
@@ -56,6 +141,7 @@ Options:
   --stamp-now       Print authoritative ET timestamp
   --reconcile       Audit system, git, and qtlog clocks
   --verify-all      Read-only check of Notion anchors
+  --sop-verify [need_notion]  Read-only SOP env check; optional Notion prereq check; then exit
   --dry-run         Preview actions without execution
   --offline         Disable all git operations
   -h, --help        Show this enhanced help menu
@@ -222,6 +308,94 @@ while [ $# -gt 0 ]; do
       break
       ;;
 
+      --sop-verify)
+
+        # Read-only: validate SOP invariants. Inline (cannot rely on functions defined later).
+
+        shift
+
+        rc=0
+
+        echo "SOP_CHECK: ts=$(TZ=America/Toronto date '+%Y-%m-%d %H%M %Z')"
+
+        echo "SOP_CHECK: user=$USER home=$HOME pwd=$(pwd -P)"
+
+        echo "SOP_CHECK: termux_version=${TERMUX_VERSION:-MISSING} prefix=${PREFIX:-MISSING}"
+
+        echo "SOP_CHECK: device=$(getprop ro.product.model 2>/dev/null || echo 'UNKNOWN')"
+
+      
+
+        # 1) Must be Termux (not proot)
+
+        if [ -z "${TERMUX_VERSION:-}" ] || [ -z "${PREFIX:-}" ]; then
+
+          echo "SOP_FAIL: not in a normal Termux session (TERMUX_VERSION/PREFIX missing)" >&2
+
+          rc=1
+
+        fi
+
+      
+
+        # 2) Must be in repo
+
+        if [ ! -d "$HOME/qtlog_repo" ] || [ ! -f "$HOME/qtlog_repo/qtlog.sh" ]; then
+
+          echo "SOP_FAIL: repo missing at $HOME/qtlog_repo" >&2
+
+          rc=1
+
+        fi
+
+      
+
+        # 3) Must have env
+
+        if [ ! -f "$HOME/.config/qt/.env" ]; then
+
+          echo "SOP_FAIL: missing envfile $HOME/.config/qt/.env" >&2
+
+          rc=1
+
+        fi
+
+      
+
+        # Optional Notion prereq check
+
+        if [ "${1:-}" = "need_notion" ]; then
+
+          if [ -z "${NOTION_API_KEY:-}" ] || [ -z "${NOTION_LOG_PAGE_ID:-}" ]; then
+
+            echo "SOP_FAIL: NOTION_API_KEY / NOTION_LOG_PAGE_ID missing" >&2
+
+            rc=1
+
+          fi
+
+          command -v curl >/dev/null 2>&1 || { echo "SOP_FAIL: curl missing" >&2; rc=1; }
+
+          command -v jq   >/dev/null 2>&1 || { echo "SOP_FAIL: jq missing" >&2; rc=1; }
+
+        fi
+
+      
+
+        if [ "$rc" -eq 0 ]; then
+
+          echo "SOP_VERIFY_OK"
+
+        else
+
+          echo "SOP_VERIFY_FAIL" >&2
+
+        fi
+
+        exit "$rc"
+
+        ;;
+
       --sop-version)
         SOP_VERSION="$(tr -d " \t\r\n" < .sop_hash 2>/dev/null || echo UNKNOWN)"
         echo "VERSION=${VERSION:-UNKNOWN}"
@@ -248,6 +422,9 @@ while [ $# -gt 0 ]; do
 done
 
 
+
+### QTLOG_SOP_ENV_CHECK_CALL ###
+# (Global SOP gate call site may be reintroduced here if/when needed.)
 
   # Read-only status and exit
   if [ "${STATUS_ONLY:-0}" -eq 1 ]; then
