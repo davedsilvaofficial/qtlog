@@ -157,3 +157,11 @@ Generated: 2025-12-14 0816 EST
 
 ## 2025-12-14 19:09 EST
 - PREVIEW: Recover from --help syntax regression caused by unsafe help-text insertion; will re-add hierarchy using shell-safe heredoc.
+
+## [1.3.0] - 2025-12-21
+### Added
+- **Unified CLI Dispatcher**: Centralized entry point with dynamic `bin/` discovery.
+- **Global SOP Gate**: Implemented runtime validation for repo/env invariants.
+- **Data Room Structure**: Organized `docs/` into Legal, Finance, Technical, and Defense.
+- **Master Index**: Automated generation of clickable directory map.
+- **Security Policy**: Established `SECURITY.md` for IP boundary control.
