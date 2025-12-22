@@ -1,85 +1,24 @@
-# Software Inventory — Executable Artifacts
-Quantum Trek Corporation
+# 🛠️ Software Inventory & Control Registry
+**Authoritative Version:** v1.3.0
+**Project Lead:** Dave D'Silva
 
-## Purpose
-This document lists executable scripts created or formalized in this repository.
-It exists to prevent loss of operational knowledge and to distinguish
-governance-critical software from utilities.
+## 1. Core Infrastructure
+| Artifact | Version | Description | Governance Role |
+| :--- | :--- | :--- | :--- |
+| `qtlog.sh` | 1.3.0 | Unified CLI Dispatcher | Primary Operational Control |
+| `.env` | - | Environment Configuration | Sensitive Key Management |
+| `.sop_hash` | - | Immutable SOP Fingerprint | Integrity Verification |
 
-Only versioned executables are listed here.
+## 2. Automation & Utility Binaries (`bin/`)
+| Script | Version | Description | Governance Role |
+| :--- | :--- | :--- | :--- |
+| `generate_index.sh` | 1.1.0 | Automated Librarian | Data Room Navigation |
+| `sop_hash.sh` | 1.0.0 | SOP Integrity Generator | Change Control / Auditing |
+| `qt-wbs` | 1.0.0 | Work Breakdown Structure | Project Lifecycle Tracking |
 
----
-
-## CORE GOVERNANCE SCRIPTS
-
-### 1. publish.sh
-Type: Shell script (executable)
-
-Role:
-- Enforces disclosure and publish discipline
-- Controls publish modes (GitHub / Notion / both)
-- Blocks accidental or direct publication
-- Acts as a governance control layer
-
-Status:
-- Active
-- Governance-critical
-
-Notes:
-This script encodes policy, not just mechanics.
-Any modification should be reviewed for disclosure impact.
+## 3. Git Invariants & Hooks
+* **Pre-Commit Hook:** Executes `qtlog.sh --sop-verify` to prevent unauthorized state changes.
+* **Master Index:** Automated synchronization with repository structure via `generate_index.sh`.
 
 ---
-
-### 2. qt-log-entry.sh
-Type: Shell script (executable)
-
-Role:
-- Creates structured, timestamped operational logs
-- Supports auditability and diligence traceability
-- Replaces informal memory with durable records
-
-Status:
-- Active
-- Memory-critical
-
-Notes:
-This script is part of the operational audit trail.
-It should not be removed without replacement.
-
----
-
-## SUPPORTING CONTROLS
-
-### 3. Pre-commit Hook
-Type: Git hook / policy script
-
-Role:
-- Enforces commit hygiene
-- Prevents malformed or incomplete commits
-
-Status:
-- Active
-- Supporting control
-
-Notes:
-This hook operates silently but protects repository integrity.
-
----
-
-## EXCLUDED ITEMS (NOT EXECUTABLE)
-
-The following are intentionally excluded from this inventory:
-- README files
-- Markdown policy documents
-- Planning notes
-- Legal documents (PPM, agreements)
-
-These are governance artifacts, not software.
-
----
-
-## Change Control
-Any addition, removal, or deprecation of executable scripts
-must be reflected in this file.
-
+*Last Audited: $(TZ="America/New_York" date "+%Y-%m-%d %H:%M:%S ET")*
