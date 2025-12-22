@@ -35,6 +35,60 @@ export TZ=America/Toronto
 VERSION="1.3.1"
 
 
+
+### QTLOG_STATUS ###
+# Read-only diagnostics. No writes to Notion, no file writes, no git writes.
+status_report() {
+  local ts today repo_dir log_dir log_file last_line gitref dirty envfile
+
+  ts="$(TZ=America/Toronto date '+%Y-%m-%d %H%M %Z')"
+  today="$(TZ=America/Toronto date '+%Y-%m-%d')"
+
+  # Repo dir (prefer known repo path, else current)
+  if [ -d "$HOME/qtlog_repo" ] && [ -f "$HOME/qtlog_repo/qtlog.sh" ]; then
+    repo_dir="$HOME/qtlog_repo"
+  else
+    repo_dir="$(pwd -P)"
+  fi
+
+  log_dir="${QTLOG_LOG_DIR:-$repo_dir/Log}"
+  log_file="$log_dir/${today}.log"
+
+  echo "QTLOG_STATUS: ts=$ts"
+  echo "QTLOG_STATUS: repo_dir=$repo_dir"
+  echo "QTLOG_STATUS: version=${VERSION:-UNKNOWN}"
+  echo "QTLOG_STATUS: sop_version=$(tr -d ' \t\r\n' < .sop_hash 2>/dev/null || echo UNKNOWN)"
+
+  # Git info (read-only)
+  if command -v git >/dev/null 2>&1 && git -C "$repo_dir" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    gitref="$(git -C "$repo_dir" rev-parse --short HEAD 2>/dev/null || echo UNKNOWN)"
+    dirty="$(git -C "$repo_dir" status --porcelain 2>/dev/null | wc -l | tr -d ' ')"
+    echo "QTLOG_STATUS: git=$gitref dirty_files=$dirty"
+  else
+    echo "QTLOG_STATUS: git=UNAVAILABLE"
+  fi
+
+  # Env file presence
+  envfile="$HOME/.config/qt/.env"
+  if [ -f "$envfile" ]; then
+    echo "QTLOG_STATUS: envfile=OK ($envfile)"
+  else
+    echo "QTLOG_STATUS: envfile=MISSING ($envfile)"
+  fi
+
+  # Local log
+  if [ -f "$log_file" ]; then
+    last_line="$(tail -n 1 "$log_file" 2>/dev/null || true)"
+    echo "QTLOG_STATUS: local_log=OK ($log_file)"
+    echo "QTLOG_STATUS: local_log_last_line=${last_line}"
+  else
+    echo "QTLOG_STATUS: local_log=MISSING ($log_file)"
+  fi
+
+  echo "QTLOG_STATUS: notion_creds=$([ -n "${NOTION_API_KEY:-}" ] && [ -n "${NOTION_LOG_PAGE_ID:-}" ] && echo OK || echo MISSING)"
+  return 0
+}
+
 ### QTLOG_CONFIG_BLOCK ###
 # SOP hash region: configuration + constants (keep stable / minimal here).
 
