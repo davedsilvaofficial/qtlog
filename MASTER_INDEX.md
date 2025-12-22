@@ -1,5 +1,5 @@
 # 🚀 Quantum Trek Master Index
-### Last Updated: 2025-12-21 21:49:48 ET
+### Last Updated: 2025-12-21 21:57:32 ET
 ---
 This index serves as the official directory for the Quantum Trek Private Placement Memorandum (PPM) and Technical Data Room.
 
@@ -7,6 +7,7 @@ This index serves as the official directory for the Quantum Trek Private Placeme
 * [Security Policy](./SECURITY.md) - IP Protection & Access Protocols
 
 ## 01 Legal
+* [CANDIDATE_VETTING_CHECKLIST.md](./docs/01_Legal/CANDIDATE_VETTING_CHECKLIST.md)
 * [GOVERNING_DOCUMENTS.md](./docs/01_Legal/GOVERNING_DOCUMENTS.md)
 * [KUMAR_PARTNERSHIP_VERIFICATION.md](./docs/01_Legal/KUMAR_PARTNERSHIP_VERIFICATION.md)
 * [NDA_REQUIREMENT.md](./docs/01_Legal/NDA_REQUIREMENT.md)
