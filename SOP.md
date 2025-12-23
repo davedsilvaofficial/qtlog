@@ -88,3 +88,14 @@ When adding or rotating credentials (GitHub tokens, API keys, secrets) on Androi
 
 ---
 
+
+---
+
+### SOP References
+
+- **Android / Termux Credential Capture SOP**
+  - Canonical reference tag: `sop-fix-directory-structure-v1`
+  - Use this tag when auditing, releasing, or rotating credentials on Android
+
+---
+
