@@ -60,6 +60,7 @@ $HOME
      └─ qtlog_archives/
          └─ qtlog_YYYY-MM-DD_HHMM.sh
 
+```
 ---
 
 ### Android / Termux Credential Capture SOP
