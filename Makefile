@@ -21,8 +21,18 @@ test-py:
 # Guard:
 #   Versions with major>=9 are blocked unless ALLOW_TEST_RELEASE=1
 #   Example override: ALLOW_TEST_RELEASE=1 make release VERSION=9.9.9
+
+# Append release notes to RELEASE.md (bottom of file).
+# Usage:
+#   make release VERSION=1.3.5
+# Then paste the release body, end with Ctrl-D.
+#
+# Guard:
+#   Versions with major>=9 are blocked unless ALLOW_TEST_RELEASE=1
+#   Example override: ALLOW_TEST_RELEASE=1 make release VERSION=9.9.9
 release:
 	@if [ -z "$(VERSION)" ]; then echo "ERROR: VERSION is required (e.g., make release VERSION=1.3.5)"; exit 2; fi
+	@python3 ./bin/check_release_md.py RELEASE.md
 	@echo "Paste RELEASE body now (end with Ctrl-D)."
 	@ALLOW_TEST_RELEASE="$${ALLOW_TEST_RELEASE:-0}" ./bin/release_append.sh --version "$(VERSION)"
 
@@ -31,6 +41,12 @@ release:
 #   make release-dry VERSION=1.3.5
 release-dry:
 	@if [ -z "$(VERSION)" ]; then echo "ERROR: VERSION is required (e.g., make release-dry VERSION=1.3.5)"; exit 2; fi
+	@python3 ./bin/check_release_md.py RELEASE.md
 	@echo "Paste RELEASE body now (end with Ctrl-D)."
 	@ALLOW_TEST_RELEASE="$${ALLOW_TEST_RELEASE:-0}" ./bin/release_append.sh --dry-run --version "$(VERSION)"
 
+# CI local checks (release formatting + tests)
+.PHONY: ci
+ci:
+	@python3 ./bin/check_release_md.py RELEASE.md
+	@$(MAKE) test
