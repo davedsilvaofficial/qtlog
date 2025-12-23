@@ -47,7 +47,7 @@ fi
 QTLOG_LOG_DIR="${QTLOG_LOG_DIR:-$QTLOG_REPO_DIR/Log}"
 
 
-VERSION="1.3.4"
+VERSION="1.3.5"
 
 
 
@@ -1240,7 +1240,7 @@ write_notion_toggle() {
     local payload_day
     payload_day="$(jq -nc --arg after "${h1_top_id:-}" --arg d "$today" '{
       after: ($after|select(length>0)),
-      children:[{object:"block",type:"toggle",toggle:{rich_text:[{type:"text",text:{content:$d}}],children:[]}}]
+      children:[{object:"block",type:"toggle",toggle:{rich_text:[{type:"text",text:{content:$d}}],children:[{object:"block",type:"toggle",toggle:{rich_text:[{type:"text",text:{content:"__TOP__"}}],children:[]}}]}}]
     }')"
     day_id="$(
       curl -sS -X PATCH "https://api.notion.com/v1/blocks/${log_h1_id}/children" \
