@@ -1,0 +1,16 @@
+graph TD
+    A[MASTER_INDEX.md<br/>Navigation Spine]
+
+    A --> B[README.md<br/>Public Entry]
+    A --> C[SOP.md<br/>Operator Law]
+    A --> D[SECURITY.md<br/>Boundary Control]
+
+    C --> E[RELEASE.md<br/>Canonical Releases]
+    E --> H[RELEASE_NOTES.md<br/>Narrative Context]
+
+    C --> F[CHANGELOG.md<br/>Commit Chronology]
+
+    D --> J[docs/<br/>Evidence Vault]
+
+    A --> G[AUDITOR_README.md<br/>External Trust]
+    A --> I[versions/<br/>Immutable Snapshots]
