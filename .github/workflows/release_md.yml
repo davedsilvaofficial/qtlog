@@ -1,0 +1,25 @@
+name: release-md
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "RELEASE.md"
+      - "Makefile"
+      - "bin/check_release_md.py"
+      - ".github/workflows/release_md.yml"
+  pull_request:
+    paths:
+      - "RELEASE.md"
+      - "Makefile"
+      - "bin/check_release_md.py"
+      - ".github/workflows/release_md.yml"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate RELEASE.md
+        run: |
+          python3 ./bin/check_release_md.py RELEASE.md
