@@ -34,7 +34,20 @@
 export TZ=America/Toronto
 QTLOG_REPO_DIR="${QTLOG_REPO_DIR:-$(cd "$(dirname "$0")" && pwd -P)}"
 
-VERSION="1.3.2"
+### QTLOG_ENV_BOOTSTRAP ###
+# Load env early so NOTION_* and QTLOG_* vars exist before any checks/actions.
+# Safe: if missing, continue; SOP verification will flag it where required.
+if [ -f "$HOME/.config/qt/.env" ]; then
+  set -a
+  . "$HOME/.config/qt/.env"
+  set +a
+fi
+
+# Ensure log dir is never empty (prevents mkdir -p "" crash)
+QTLOG_LOG_DIR="${QTLOG_LOG_DIR:-$QTLOG_REPO_DIR/Log}"
+
+
+VERSION="1.3.4"
 
 
 
@@ -250,6 +263,9 @@ ARGS=()
 TODO_MODE=0
 TODO_ITEM=""
 
+BRAG_MODE=0
+RELEASE_LOG_MODE=0
+
 while [ $# -gt 0 ]; do
   case "$1" in
     --device)
@@ -354,6 +370,16 @@ while [ $# -gt 0 ]; do
           shift
         fi
         ;;
+      --brag)
+        BRAG_MODE=1
+        shift
+        ;;
+
+      --release-log)
+        RELEASE_LOG_MODE=1
+        shift
+        ;;
+
 
     -h|--help)
       usage
@@ -478,6 +504,26 @@ while [ $# -gt 0 ]; do
 done
 
 
+
+
+### QTLOG_BRAG_AND_RELEASE ###
+# Convenience generators. They only set MESSAGE; normal logging flow handles local/Notion/git modes.
+if [ "${BRAG_MODE:-0}" -eq 1 ]; then
+  ARGS=("brag snapshot: Termux-native Bash + Python 3 patch tooling, curl+jq JSON into Notion API, SOP hash enforcement, read-only --status diagnostics, and __TOP__ ordering invariants.")
+fi
+
+if [ "${RELEASE_LOG_MODE:-0}" -eq 1 ]; then
+  # Build a release note from git if available; otherwise degrade gracefully.
+  tag="UNKNOWN"
+  commit="UNKNOWN"
+  subj="UNKNOWN"
+  if command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    tag="$(git describe --tags --abbrev=0 2>/dev/null || echo UNKNOWN)"
+    commit="$(git rev-parse --short HEAD 2>/dev/null || echo UNKNOWN)"
+    subj="$(git log -1 --pretty=%s 2>/dev/null || echo UNKNOWN)"
+  fi
+  ARGS=("release log: tag=${tag} commit=${commit} subject=${subj}")
+fi
 
 ### QTLOG_SOP_ENV_CHECK_CALL ###
 # (Global SOP gate call site may be reintroduced here if/when needed.)
@@ -1340,7 +1386,16 @@ if git check-ignore -q "$LOG_FILE" 2>/dev/null; then
 fi
 
 git add "$LOG_FILE"
-COMMIT_MSG="[$DEVICE] $TODAY $NOW_FMT $MESSAGE"
+
+# --- Message finalization (brag polish) ---
+MESSAGE_FINAL="$MESSAGE"
+if [ -n "${VERSION:-}" ]; then
+  if ! printf '%s' "$MESSAGE_FINAL" | grep -Eq '^v[0-9]'; then
+    MESSAGE_FINAL="v${VERSION} ${MESSAGE_FINAL}"
+  fi
+fi
+COMMIT_MSG="[$DEVICE] $TODAY $NOW_FMT $MESSAGE_FINAL"
+
 confirm_commit || exit 0
     git commit -m "$COMMIT_MSG" >/dev/null 2>&1 || echo "qtlog: nothing to commit (maybe duplicate message?)"
 
