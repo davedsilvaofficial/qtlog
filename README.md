@@ -84,3 +84,12 @@ Everything else in this repository is considered **private, operational, or sens
 Run:
 - `./scripts/test.sh`
 - or `make test`
+
+## Documentation
+
+- Architecture: [ARCHITECTURE.md](ARCHITECTURE.md)
+- Security notes: [SECURITY.md](SECURITY.md)
+- Notion ordering SOP: [docs/SOP_NOTION_LOG_ORDERING.md](docs/SOP_NOTION_LOG_ORDERING.md)
+- Executive summary (non-technical): [docs/EXEC_SUMMARY.md](docs/EXEC_SUMMARY.md)
+- Changelog / audit trail: [CHANGELOG.md](CHANGELOG.md)
+

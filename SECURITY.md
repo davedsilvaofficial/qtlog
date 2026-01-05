@@ -1,21 +1,23 @@
-# 🛡️ Quantum Trek Security & IP Protection Policy
+# Security Notes (qtlog)
 
-## Overview
-Quantum Trek (QT) operates at the intersection of "Hero Tech" development and defense-grade scientific research. This document outlines how we protect our Intellectual Property (IP), including Quantum Kinetic Fusion specifications and Arc Reactor schematics.
+This repository is intentionally “GitHub-safe”:
+- No secrets are required to read/understand the SOPs and architecture.
+- Secrets must never be committed.
 
-## Data Classification
-We maintain a strict boundary between public project management and private technical data:
+## Secrets policy
+Store credentials locally (example):
+- `~/.config/qt/.env` (recommend: `chmod 600 ~/.config/qt/.env`)
+Never commit:
+- API keys/tokens
+- Notion page IDs if they are private
+- any `.env` files
 
-1. **Public Tier (qtlog):** Version control, logging utilities, and public roadmap.
-2. **Private Tier (qt-vault):** Proprietary math, Dr. Kumar's verified correspondence, and PPM financial data.
+## Relevant docs
+- Architecture rationale: `ARCHITECTURE.md`
+- Notion ordering SOP: `docs/SOP_NOTION_LOG_ORDERING.md`
+- Audit/change history: `CHANGELOG.md`
 
-## Accessing the Private Data Room
-Access to the Private Vault/Data Room is restricted to authorized personnel, including:
-* Licensed Legal Counsel
-* Vetted PhD Research Candidates
-* Verified Defense Department Officials (DND/DoD)
-
-**Requirement:** Access requires a signed Non-Disclosure Agreement (NDA). Please contact your project lead to initiate the vetting process.
-
-## Reporting a Security Concern
-If you discover a security vulnerability within this repository, please do not open a public issue. Instead, send a detailed report to our security team. We aim to acknowledge all valid reports within 48 hours.
+## Operational rule
+If a failure happens:
+- capture response once (HTTP + body)
+- stop and fix root cause (avoid retry loops that spam Notion)
