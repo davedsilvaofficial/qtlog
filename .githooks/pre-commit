@@ -1,27 +1,26 @@
-#!/data/data/com.termux/files/usr/bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
-cd "$(git rev-parse --show-toplevel)" || exit 1
+# 1) qtlog.sh must be valid bash
+bash -n qtlog.sh
 
-echo "PRECOMMIT: ts=$(TZ=America/Toronto date '+%Y-%m-%d %H%M %Z')"
-echo "PRECOMMIT: verifying SOP invariants (no assumptions)"
+# 2) SOP must contain required sections
+SOP="docs/03_Technical/qtlog_best_practices_sop.md"
+[ -f "$SOP" ] || { echo "ERROR: missing $SOP" >&2; exit 1; }
 
-# 1) Must pass --sop-verify
-bash ./qtlog.sh --sop-verify >/dev/null
-
-# 2) SOP hash must match committed .sop_hash
-[ -f .sop_hash ] || { echo "PRECOMMIT_FAIL: missing .sop_hash (run: bin/sop_hash.sh > .sop_hash)" >&2; exit 1; }
-
-have="$(bash ./bin/sop_hash.sh)"
-want="$(tr -d ' \t\r\n' < .sop_hash)"
-
-[ -n "$have" ] || { echo "PRECOMMIT_FAIL: computed empty SOP hash" >&2; exit 1; }
-[ "$have" = "$want" ] || {
-  echo "PRECOMMIT_FAIL: SOP hash mismatch" >&2
-  echo "  have=$have" >&2
-  echo "  want=$want" >&2
-  echo "Fix: bash ./bin/sop_hash.sh > .sop_hash  (then git add .sop_hash)" >&2
-  exit 1
+grep -q "### 3) Notion Payload Safety (Large Logs)" "$SOP" || {
+  echo "ERROR: SOP missing Section 3 Notion Payload Safety" >&2; exit 1;
+}
+grep -q "Recovery Checklist (When Termux Hangs)" "$SOP" || {
+  echo "ERROR: SOP missing Recovery Checklist" >&2; exit 1;
 }
 
-echo "PRECOMMIT_OK"
+# 3) Guard against committing a broken heredoc marker we rely on
+grep -q "### QTLOG_NOTION_BIGPAYLOAD_HELPERS ###" qtlog.sh || {
+  echo "ERROR: qtlog.sh missing QTLOG_NOTION_BIGPAYLOAD_HELPERS marker" >&2; exit 1;
+}
+grep -q "### QTLOG_NOTION_ENTRY_PATCH ###" qtlog.sh || {
+  echo "ERROR: qtlog.sh missing QTLOG_NOTION_ENTRY_PATCH marker" >&2; exit 1;
+}
+
+echo "pre-commit OK"

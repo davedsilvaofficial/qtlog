@@ -1,3 +1,7 @@
+## Unreleased
+
+- Notion Log Ordering: enforce newest-at-top inserts using '__TOP__' anchor + invariant checks (see docs/SOP_NOTION_LOG_ORDERING.md).
+
 ## [2025-12-21] SOP Enforcement & Zero-Assumption Runtime Gate
 
 
@@ -165,3 +169,10 @@ Generated: 2025-12-14 0816 EST
 - **Data Room Structure**: Organized `docs/` into Legal, Finance, Technical, and Defense.
 - **Master Index**: Automated generation of clickable directory map.
 - **Security Policy**: Established `SECURITY.md` for IP boundary control.
+
+## Documentation
+
+- SOP hardening for Android / Termux credential handling
+- Closed malformed DIRECTORY STRUCTURE code fence
+- Canonical SOP reference: `sop-fix-directory-structure-v1`
+

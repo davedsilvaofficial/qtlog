@@ -112,15 +112,192 @@ status_report() {
 
 ### QTLOG_ENSURE_TODAY_TOP ###
 ensure_today_top() {
-  # Placeholder: full implementation may exist elsewhere in the script today.
-  # Kept as a named, hashable SOP region for restoring structured enforcement.
+  # Enforce Log-day structure invariants before any Notion write.
+  # Contract:
+  # - H1 "Log" exists under NOTION_LOG_PAGE_ID
+  # - Under H1 "Log": toggle "__TOP__" exists (recommended to keep as FIRST manually)
+  # - Today's day toggle "YYYY-MM-DD" exists under H1 (inserted after H1 __TOP__ when created)
+  # - Under today's day toggle: "__TOP__" exists and MUST be the FIRST child (newest-at-top)
   #
-  # Contract (future full impl):
-  # - Ensure today's day toggle exists under Log
-  # - Ensure __TOP__ exists and is FIRST child under the day
-  # - Return 0 if OK, non-zero if not OK
+  # Notes:
+  # - Notion API does not reliably support reordering existing blocks; where ordering matters,
+  #   we FAIL with an explicit instruction to drag "__TOP__" to the top once.
+  # - Safe: if Notion env/creds missing, we return 0 (no-op) to avoid blocking local logging.
+
+  sop_env_check need_notion || return 1
+
+  if [ -z "${NOTION_API_KEY:-}" ] || [ -z "${NOTION_LOG_PAGE_ID:-}" ]; then
+    echo "ENSURE_TODAY_TOP_SKIP=missing_env"
+    return 0
+  fi
+
+  command -v curl >/dev/null 2>&1 || { echo "ENSURE_TODAY_TOP_FAIL=curl_missing" >&2; return 1; }
+  command -v jq   >/dev/null 2>&1 || { echo "ENSURE_TODAY_TOP_FAIL=jq_missing" >&2; return 1; }
+
+  local today log_h1_id h1_top_id h1_first_id day_id day_first_id day_top_id payload resp
+  today="$(TZ=America/Toronto date '+%Y-%m-%d')"
+
+  # 1) Find H1 "Log"
+  log_h1_id="$(
+    curl -sS "https://api.notion.com/v1/blocks/${NOTION_LOG_PAGE_ID}/children?page_size=200" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28" | \
+    jq -r '.results[]?
+      | select(.type=="heading_1")
+      | select((.heading_1.rich_text|map(.plain_text)|join(""))=="Log")
+      | .id' | head -n1
+  )"
+  if [ -z "${log_h1_id:-}" ]; then
+    echo "ENSURE_TODAY_TOP_FAIL=missing_h1_log" >&2
+    return 1
+  fi
+
+  # 2) Ensure H1 "__TOP__" exists (cannot guarantee it is first; warn/require manual if not)
+  h1_first_id="$(
+    curl -sS "https://api.notion.com/v1/blocks/${log_h1_id}/children?page_size=1" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28" | jq -r '.results[0].id // empty'
+  )"
+
+  h1_top_id="$(
+    curl -sS "https://api.notion.com/v1/blocks/${log_h1_id}/children?page_size=200" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28" | \
+    jq -r '.results[]?
+      | select(.type=="toggle")
+      | select((.toggle.rich_text|map(.plain_text)|join(""))=="__TOP__")
+      | .id' | head -n1
+  )"
+
+  if [ -z "${h1_top_id:-}" ]; then
+    payload="$(
+      jq -nc --arg after "${h1_first_id:-}" '{
+        after: ($after|select(length>0)),
+        children:[{object:"block",type:"toggle",toggle:{rich_text:[{type:"text",text:{content:"__TOP__"}}],children:[]}}]
+      }'
+    )"
+    resp="$(
+      curl -sS -X PATCH "https://api.notion.com/v1/blocks/${log_h1_id}/children" \
+        -H "Authorization: Bearer $NOTION_API_KEY" \
+        -H "Notion-Version: 2022-06-28" \
+        -H "Content-Type: application/json" \
+        -d "$payload"
+    )"
+    h1_top_id="$(printf '%s' "$resp" | jq -r '.results[0].id // empty')"
+    echo "ENSURE_TODAY_TOP_NOTE=created_h1_top_anchor" >&2
+  fi
+
+  if [ -z "${h1_top_id:-}" ]; then
+    echo "ENSURE_TODAY_TOP_FAIL=h1_top_create_failed" >&2
+    return 1
+  fi
+
+  # 3) Ensure today's day toggle exists under H1 (inserted after H1 __TOP__ when created)
+  day_id="$(
+    curl -sS "https://api.notion.com/v1/blocks/${log_h1_id}/children?page_size=200" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28" | \
+    jq -r --arg d "$today" '.results[]?
+      | select(.type=="toggle")
+      | select((.toggle.rich_text|map(.plain_text)|join(""))==$d)
+      | .id' | head -n1
+  )"
+
+  if [ -z "${day_id:-}" ]; then
+    payload="$(
+      jq -nc --arg after "$h1_top_id" --arg d "$today" '{
+        after: $after,
+        children:[{
+          object:"block",type:"toggle",
+          toggle:{
+            rich_text:[{type:"text",text:{content:$d}}],
+            children:[
+              {object:"block",type:"toggle",
+               toggle:{rich_text:[{type:"text",text:{content:"__TOP__"}}],children:[]}}
+            ]
+          }
+        }]
+      }'
+    )"
+    resp="$(
+      curl -sS -X PATCH "https://api.notion.com/v1/blocks/${log_h1_id}/children" \
+        -H "Authorization: Bearer $NOTION_API_KEY" \
+        -H "Notion-Version: 2022-06-28" \
+        -H "Content-Type: application/json" \
+        -d "$payload"
+    )"
+    day_id="$(printf '%s' "$resp" | jq -r '.results[0].id // empty')"
+    echo "ENSURE_TODAY_TOP_NOTE=created_day_toggle_${today}" >&2
+  fi
+
+  if [ -z "${day_id:-}" ]; then
+    echo "ENSURE_TODAY_TOP_FAIL=day_create_failed" >&2
+    return 1
+  fi
+
+  # 4) Ensure day "__TOP__" exists
+  day_top_id="$(
+    curl -sS "https://api.notion.com/v1/blocks/${day_id}/children?page_size=200" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28" | \
+    jq -r '.results[]?
+      | select(.type=="toggle")
+      | select((.toggle.rich_text|map(.plain_text)|join(""))=="__TOP__")
+      | .id' | head -n1
+  )"
+
+  if [ -z "${day_top_id:-}" ]; then
+    day_first_id="$(
+      curl -sS "https://api.notion.com/v1/blocks/${day_id}/children?page_size=1" \
+        -H "Authorization: Bearer $NOTION_API_KEY" \
+        -H "Notion-Version: 2022-06-28" | jq -r '.results[0].id // empty'
+    )"
+    payload="$(
+      jq -nc --arg after "${day_first_id:-}" '{
+        after: ($after|select(length>0)),
+        children:[{object:"block",type:"toggle",toggle:{rich_text:[{type:"text",text:{content:"__TOP__"}}],children:[]}}]
+      }'
+    )"
+    resp="$(
+      curl -sS -X PATCH "https://api.notion.com/v1/blocks/${day_id}/children" \
+        -H "Authorization: Bearer $NOTION_API_KEY" \
+        -H "Notion-Version: 2022-06-28" \
+        -H "Content-Type: application/json" \
+        -d "$payload"
+    )"
+    day_top_id="$(printf '%s' "$resp" | jq -r '.results[0].id // empty')"
+    echo "ENSURE_TODAY_TOP_NOTE=created_day_top_anchor" >&2
+  fi
+
+  if [ -z "${day_top_id:-}" ]; then
+    echo "ENSURE_TODAY_TOP_FAIL=day_top_create_failed" >&2
+    return 1
+  fi
+
+  # 5) Hard invariant: day "__TOP__" must be FIRST child (for newest-at-top inserts)
+  local day_first_title
+  day_first_title="$(
+    curl -sS "https://api.notion.com/v1/blocks/${day_id}/children?page_size=1" \
+      -H "Authorization: Bearer $NOTION_API_KEY" \
+      -H "Notion-Version: 2022-06-28" | \
+    jq -r '(
+      .results[0]
+      | select(.type=="toggle")
+      | (.toggle.rich_text|map(.plain_text)|join(""))
+    ) // ""'
+  )"
+
+  if [ "$day_first_title" != "__TOP__" ]; then
+    echo "ENSURE_TODAY_TOP_FAIL=day_top_not_first" >&2
+    echo "ACTION: In Notion, open QT ▸ Log ▸ ${today} and drag the '__TOP__' toggle to the very TOP (first child), then retry." >&2
+    return 1
+  fi
+
+  echo "ENSURE_TODAY_TOP_OK=$today"
   return 0
 }
+
+
 
 ### QTLOG_SOP_FAIL_NOTION_LOG ###
 sop_fail_notion_log() {
@@ -542,8 +719,13 @@ fi
     fi
     TZ=America/Toronto date '+%Y-%m-%d %H:%M:%S %Z'
   fi
-
-  ### SOP_DEFAULTS_TO_BOTH + NOTION_GUARD ###
+    # --- MODE ALIASES (compat): allow "qtlog.sh notion ..." ---
+    # After option parsing, positional args live in ARGS[].
+    if [ "${#ARGS[@]}" -gt 0 ] && { [ "${ARGS[0]}" = "notion" ] || [ "${ARGS[0]}" = "both" ] || [ "${ARGS[0]}" = "file" ]; }; then
+      LOG_MODE="${ARGS[0]}"
+      ARGS=("${ARGS[@]:1}")
+    fi
+### SOP_DEFAULTS_TO_BOTH + NOTION_GUARD ###
   # SOP defaults to BOTH unless the user explicitly set LOG_MODE via flags.
   # This ensures SOP entries are mirrored to Notion by default (traceability).
   if [ "${#ARGS[@]}" -gt 0 ] && [ "${ARGS[0]}" = "sop" ] && [ "${LOG_MODE_EXPLICIT:-0}" -eq 0 ]; then
@@ -732,6 +914,81 @@ PYIN
     fi
 
     # ------------------------------------------------------------------
+# ==============================================================================
+# QTLOG — NOTION LOG INSERTION CONTRACT (GitHub-safe)
+# Timestamp: 2026-01-05 1425 ET
+#
+# PURPOSE
+# - Guarantee newest-at-top ordering for QT ▸ Log entries in Notion using a stable anchor pattern.
+#
+# Q&A (embedded for code-level traceability; canonical SOP is in docs/)
+#
+# Q1) Where does qtlog append a Log entry in Notion?
+# A1) Under NOTION_LOG_PAGE_ID, qtlog locates H1 "Log" and today's day toggle (YYYY-MM-DD),
+#     then writes via: PATCH /v1/blocks/${day_id}/children
+#
+# Q2) Why do we use a '__TOP__' toggle?
+# A2) Notion API reliably supports insert-after, but does not reliably support reordering.
+#     '__TOP__' is a stable insertion anchor.
+#
+# Q3) What invariants must be true for ordering to work?
+# A3) Under H1 "Log": '__TOP__' exists (recommended FIRST; verify checks it)
+#     Under day YYYY-MM-DD: '__TOP__' exists AND IS FIRST CHILD (hard invariant)
+#
+# Q4) What creates the structure if it’s missing?
+# A4) ensure_today_top() ensures:
+#     - H1 "Log" exists (required)
+#     - H1 '__TOP__' exists (create if missing)
+#     - Day toggle exists (create if missing; insert after H1 '__TOP__')
+#     - Day '__TOP__' exists (create if missing)
+#     - Verifies day '__TOP__' is FIRST CHILD (else fail with manual action)
+#
+# Q5) What happens if Notion credentials are missing?
+# A5) Safety-first: Notion mode is downgraded to local logging (no blocking).
+#     ensure_today_top() may print SKIP markers when env is missing.
+#
+# Q6) How do we verify the structure without writing?
+# A6) ./qtlog.sh --verify-all
+#     (checks '__TOP__' first-child invariants for Log and today’s day toggle)
+#
+# Q7) What is the correct insertion rule for newest-at-top day log entries?
+# A7) Always insert AFTER the day '__TOP__' anchor id:
+#     - In code: top_id is the day '__TOP__' block id
+#     - payload_entry MUST include after:$after (where $after == $top_id)
+#
+# WHERE WE WRITE (IMPLEMENTATION)
+# - Function: write_notion_toggle()
+# - Anchor id variable: top_id
+# - Payload: payload_entry="$(jq -nc --arg after "$top_id" ... '{ after:$after, ... }')"
+# - Endpoint: PATCH https://api.notion.com/v1/blocks/${day_id}/children
+#
+# FAILURE MODE (OPERATOR ACTION REQUIRED)
+# - If day '__TOP__' is not FIRST CHILD:
+#   -> qtlog MUST FAIL
+#   -> Operator manually drags '__TOP__' to the top ONCE, then retry
+#
+# REFERENCES (GitHub-safe)
+# - docs/SOP_NOTION_LOG_ORDERING.md
+# - CHANGELOG.md (Notion Log Ordering entry)
+# 
+# TERMUX BEST PRACTICES (LEARNED THE HARD WAY)
+# - Always run from repo root:  cd ~/qtlog_repo || exit 1
+# - Pin timezone explicitly for all timestamps:  TZ=America/Toronto
+# - Prefer deterministic tooling: use rg/jq/curl and set PAGER=cat for logs
+# - Avoid interactive editors/pagers in automation: keep commands non-interactive
+# - Keep secrets OUT of git:
+#   - store in ~/.config/qt/.env (chmod 600) and do NOT commit it
+#   - never echo NOTION_API_KEY / tokens into logs
+# - Ensure dependencies exist before side effects:
+#   - command -v curl; command -v jq; command -v python
+# - Use PATCH inserts with stable anchors; do not rely on Notion reordering
+# - When something fails: capture HTTP_CODE + response body once, then stop
+# - Use git hygiene:
+#   - git status before commit
+#   - keep commits small, descriptive, and GitHub-safe (no private IDs/secrets)
+# 
+# ==============================================================================
+
 
   # Create CEI entry (toggle with 3 toggle children) after DATE pin so it appears at the top
   URL="https://api.notion.com/v1/blocks/${DATE_ID}/children"
@@ -1155,6 +1412,51 @@ echo "$ENTRY" >> "$LOG_FILE"
 # --- Notion helpers (SOP: newest-at-top, JSON-safe) ---
 
 # --- Notion helpers (SOP: newest-at-top, JSON-safe) ---
+
+### QTLOG_NOTION_BIGPAYLOAD_HELPERS ###
+# Big payload strategy:
+# - Keep title short
+# - Put large/multiline body under Log as code blocks
+
+notion_append_big_text_as_codeblocks() {
+  local entry_id="$1"
+  local raw_text="$2"
+
+  local log_child_id
+      # Retry: newly-created entry children can be eventually-consistent in Notion API
+    local tries=0
+    while :; do
+      log_child_id="$(notion_find_child_toggle_id_by_title "$entry_id" "Log")" || true
+      [ -n "${log_child_id:-}" ] && break
+      tries=$((tries+1))
+      [ "$tries" -ge 6 ] && break
+      sleep 1
+    done
+  [ -z "$log_child_id" ] && return 0
+
+  local body
+  body="$(printf "%s" "$raw_text" | awk 'NR==1{next} {print}')"
+  [ -z "${body//[[:space:]]/}" ] && return 0
+
+    printf "%s" "$body" | python - <<'PY' | \
+      curl -sS -X PATCH "https://api.notion.com/v1/blocks/${log_child_id}/children" \
+        -H "Authorization: Bearer ${NOTION_API_KEY}" \
+        -H "Notion-Version: 2022-06-28" \
+        -H "Content-Type: application/json" \
+        -d @-
+import json, sys
+text = sys.stdin.read()
+chunk = 1400
+parts = [text[i:i+chunk] for i in range(0, len(text), chunk)]
+blocks = [{
+  "object":"block",
+  "type":"code",
+  "code":{"rich_text":[{"type":"text","text":{"content":p}}],"language":"plain text"}
+} for p in parts]
+print(json.dumps({"children": blocks}, ensure_ascii=False))
+PY
+}
+### /QTLOG_NOTION_BIGPAYLOAD_HELPERS ###
 write_notion_toggle() {
   sop_env_check need_notion || return 1
   [ -z "${NOTION_API_KEY:-}" ] && return 0
@@ -1166,8 +1468,12 @@ write_notion_toggle() {
   local ts_min desc title
   ts_min="$(TZ=America/Toronto date '+%Y-%m-%d %H%M')"
 
+  # QTLOG_TITLE_SAFETY
+  # Use ONLY first line and hard-cap length for Notion (<=2000)
+  desc="$(printf "%s" "$raw" | awk 'NR==1{print; exit}')"
   # Strip trailing timestamps like " — 2025-12-18 221141" or " — 2025-12-18 2211"
-  desc="$(printf "%s" "$raw" | sed -E 's/[[:space:]]+—[[:space:]]+[0-9]{4}-[0-9]{2}-[0-9]{2}[[:space:]]+[0-9]{4,6}$//')"
+  desc="$(printf "%s" "$desc" | sed -E 's/[[:space:]]+—[[:space:]]+[0-9]{4}-[0-9]{2}-[0-9]{2}[[:space:]]+[0-9]{4,6}$//')"
+  desc="${desc:0:1800}"
   title="${ts_min} ET — ${desc}"
 
   local today
@@ -1338,6 +1644,11 @@ write_notion_toggle() {
       return 1
     fi
     echo "qtlog: Notion entry inserted id=$new_id" >&2
+      # SOP: big payload safety — if multiline (or forced), append body under Log as code blocks
+      if [ "${QTLOG_FORCE_BIGPAYLOAD:-0}" = "1" ] || [ "$(printf "%s" "$raw" | wc -l | tr -d " ")" -gt 1 ]; then
+        notion_append_big_text_as_codeblocks "$new_id" "$raw" || true
+      fi
+
     return 0
 
 }

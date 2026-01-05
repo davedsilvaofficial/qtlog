@@ -17,3 +17,11 @@ This release hardens the public export boundary by introducing a **pre-export gu
 ### Tag
 - `v1.0.1` (annotated tag) pushed to origin.
 
+
+### Documentation
+
+- **SOP hardening (Android / Termux)**
+  - Fixed `DIRECTORY STRUCTURE` code fence rendering issue.
+  - Verified and formalized Android / Termux credential handling to prevent intermittent authentication failures.
+  - Reference SOP tag: `sop-fix-directory-structure-v1`
+
