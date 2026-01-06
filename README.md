@@ -98,3 +98,12 @@ Run:
 Investor-facing, GitHub-safe external disclosure index:
 - [docs/Data_Room/README.md](docs/Data_Room/README.md)
 
+
+## 📋 Data Room Compliance
+
+- **Status:** PASS
+- **Tag:** v2026.01.06-compliance
+- **Release:** https://github.com/davedsilvaofficial/qtlog/releases/tag/v2026.01.06-compliance
+- **Evidence:** docs/Data_Room/COMPLIANCE_BADGE.md
+- **Verification:** Strict bottom-only QT Big Picture hub
+
