@@ -1,0 +1,35 @@
+name: Release PDF (One-Pager)
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-attach:
+    runs-on: ubuntu-latest
+    container: pandoc/latex:latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build PDF
+        run: |
+          test -f ONE_PAGER.md
+          pandoc ONE_PAGER.md -o Quantum_Trek_Data_Room_Compliance.pdf
+
+      - name: Upload artifact (always)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Quantum_Trek_Data_Room_Compliance
+          path: Quantum_Trek_Data_Room_Compliance.pdf
+
+      - name: Attach PDF to GitHub Release (tag pushes)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Quantum_Trek_Data_Room_Compliance.pdf
