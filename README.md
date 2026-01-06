@@ -101,6 +101,8 @@ Investor-facing, GitHub-safe external disclosure index:
 
 ## 📋 Data Room Compliance
 
+[![Data Room Compliance](docs/Data_Room/COMPLIANCE_BADGE.svg)](docs/Data_Room/COMPLIANCE_BADGE.md)
+
 - **Status:** PASS
 - **Tag:** v2026.01.06-compliance
 - **Release:** https://github.com/davedsilvaofficial/qtlog/releases/tag/v2026.01.06-compliance
