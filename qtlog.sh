@@ -1418,6 +1418,25 @@ echo "$ENTRY" >> "$LOG_FILE"
 # - Keep title short
 # - Put large/multiline body under Log as code blocks
 
+# --- Notion helper: find first child toggle by exact title (GitHub-safe) ---
+notion_find_child_toggle_id_by_title() {
+  local parent_id="$1"
+  local title="$2"
+
+  [ -z "${parent_id:-}" ] && return 1
+  [ -z "${title:-}" ] && return 1
+  [ -z "${NOTION_API_KEY:-}" ] && return 1
+
+  curl -sS "https://api.notion.com/v1/blocks/${parent_id}/children?page_size=200" \
+    -H "Authorization: Bearer $NOTION_API_KEY" \
+    -H "Notion-Version: 2022-06-28" | \
+  jq -r --arg t "$title" '.results[]?
+    | select(.type=="toggle")
+    | select((.toggle.rich_text|map(.plain_text)|join(""))==$t)
+    | .id' | head -n1
+}
+
+
 notion_append_big_text_as_codeblocks() {
   local entry_id="$1"
   local raw_text="$2"
@@ -1644,6 +1663,20 @@ write_notion_toggle() {
       return 1
     fi
     echo "qtlog: Notion entry inserted id=$new_id" >&2
+
+        # AUTO_APPEND_FILE: if QTLOG_APPEND_FILE points to a file, append its content into the Notion entry.
+        # GitHub-safe: no secrets; operator controls file path locally.
+        if [ -n "${QTLOG_APPEND_FILE:-}" ] && [ -f "${QTLOG_APPEND_FILE}" ]; then
+          local file_body
+          file_body="$(cat "${QTLOG_APPEND_FILE}")"
+          if [ -n "${file_body:-}" ]; then
+            notion_append_big_text_as_codeblocks "$new_id" "$file_body" || true
+            echo "qtlog: appended file to Notion entry (QTLOG_APPEND_FILE=${QTLOG_APPEND_FILE})" >&2
+          else
+            echo "qtlog: QTLOG_APPEND_FILE was empty; nothing appended (${QTLOG_APPEND_FILE})" >&2
+          fi
+        fi
+
       # SOP: big payload safety — if multiline (or forced), append body under Log as code blocks
       if [ "${QTLOG_FORCE_BIGPAYLOAD:-0}" = "1" ] || [ "$(printf "%s" "$raw" | wc -l | tr -d " ")" -gt 1 ]; then
         notion_append_big_text_as_codeblocks "$new_id" "$raw" || true

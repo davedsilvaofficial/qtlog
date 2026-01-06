@@ -11,6 +11,37 @@ It does so by linking to canonical, GitHub-safe source documents (no secrets req
 
 ---
 
+---
+
+## How this fits the QT Big Picture
+
+This Data Room corresponds to the **“Data Room → external disclosure”** layer
+described in the QT – Big Picture.
+
+It provides a **frozen, investor-safe view** of:
+- the canonical method,
+- its operational enforcement,
+- and its audited evolution.
+
+Live planning and narrative live in **Notion**.  
+**Truth-at-time-of-action is recorded by `qtlog`.**
+
+---
+
+## Governance Note (Important)
+
+Notion **explains** the system; it does **not** define or enforce it.
+
+- Governance rules are defined in **code** (`qtlog.sh`)
+- Enforcement happens at **execution time**
+- Changes are tracked via **Git history and CHANGELOG.md**
+
+This separation ensures:
+- narrative flexibility without loss of control,
+- operational correctness without human drift,
+- and investor / auditor confidence that process discipline is enforced by tooling.
+
+
 ## Folder Map (what you asked to see)
 
 📁 Data Room  
@@ -39,6 +70,23 @@ This file answers:
 - “How did you manage complexity at scale without losing control?”
 
 ---
+
+
+---
+
+### 🏭 Proven Lineage — Maple Leaf Foods Mini-EPM Transformation
+
+**Canonical lineage anchor:**  
+`WBS-1.1.1_Maple_Leaf_Foods_Mini_EPM_Lineage.md`
+
+This execution system is built on a **real, large-scale transformation**:
+- Thousands of employees coordinated
+- ~$1B modernization program
+- ~$4B annual revenue preserved
+- Six Sigma + Microsoft Project Server Mini-EPM
+
+qtlog is the **automation and evolution** of this proven model — not a theory.
+
 
 ## B) Operational Proof (the “it actually runs”)
 

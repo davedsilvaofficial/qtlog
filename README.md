@@ -93,3 +93,8 @@ Run:
 - Executive summary (non-technical): [docs/EXEC_SUMMARY.md](docs/EXEC_SUMMARY.md)
 - Changelog / audit trail: [CHANGELOG.md](CHANGELOG.md)
 
+## Data Room
+
+Investor-facing, GitHub-safe external disclosure index:
+- [docs/Data_Room/README.md](docs/Data_Room/README.md)
+
