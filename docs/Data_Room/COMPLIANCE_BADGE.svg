@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="360" height="40" role="img" aria-label="Data Room Compliance: PASS">
+  <linearGradient id="g" x2="0" y2="100%">
+    <stop offset="0" stop-color="#fff" stop-opacity=".7"/>
+    <stop offset=".1" stop-color="#aaa" stop-opacity=".1"/>
+    <stop offset=".9" stop-color="#000" stop-opacity=".3"/>
+    <stop offset="1" stop-color="#000" stop-opacity=".5"/>
+  </linearGradient>
+  <rect rx="6" width="360" height="40" fill="#2f855a"/>
+  <rect rx="6" x="180" width="180" height="40" fill="#38a169"/>
+  <rect rx="6" width="360" height="40" fill="url(#g)"/>
+  <g fill="#fff" text-anchor="middle"
+     font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="14">
+    <text x="90" y="26">Data Room</text>
+    <text x="270" y="26">COMPLIANCE: PASS</text>
+  </g>
+</svg>
