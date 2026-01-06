@@ -1,0 +1,29 @@
+name: Compliance
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+      QT_BIG_PICTURE_PAGE_ID: ${{ secrets.QT_BIG_PICTURE_PAGE_ID }}
+      QT_CANON_PAGE_ID: ${{ secrets.QT_CANON_PAGE_ID }}
+      QT_LOG_PAGE_ID: ${{ secrets.QT_LOG_PAGE_ID }}
+      QT_TODO_PAGE_ID: ${{ secrets.QT_TODO_PAGE_ID }}
+      QT_WBS_CROSSWALK_PAGE_ID: ${{ secrets.QT_WBS_CROSSWALK_PAGE_ID }}
+      QT_DUE_DILIGENCE_PAGE_ID: ${{ secrets.QT_DUE_DILIGENCE_PAGE_ID }}
+      QT_INVESTORS_PAGE_ID: ${{ secrets.QT_INVESTORS_PAGE_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run verifier
+        run: |
+          python tools/verify_sop_automation.py
