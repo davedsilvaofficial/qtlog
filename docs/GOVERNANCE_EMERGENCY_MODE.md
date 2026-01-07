@@ -118,3 +118,48 @@ The **Emergency Auto-Approve bot** exists to satisfy the single required approva
 → Verify the emergency auto-approve workflow is present and valid  
 → Verify `QT_EMERGENCY_REVIEW_TOKEN` secret exists  
 → Do **not** remove branch protection
+
+---
+
+## FAQ (Solo-Founder Emergency Governance)
+
+### Q: Why do we need Emergency Auto-Approve at all?
+Because GitHub enforces a hard rule: **a PR author cannot approve their own PR**, even as an admin.  
+If branch protection requires **≥1 approving review** and you are the only collaborator, merges become **permanently blocked** unless a second identity can approve.
+
+### Q: Isn’t disabling branch protection “fine” in an emergency?
+No. In this repo’s governance model, **disabling protections is a governance integrity break** because it creates an unverifiable gap in controls and audit continuity.  
+Emergency governance is explicitly designed to avoid that.
+
+### Q: What does the Emergency Auto-Approve bot actually do?
+It provides the **single required approval** *only* when all gating criteria are satisfied:
+- `Compliance / verify` succeeded
+- PR is **same-repo** (not a fork)
+- PR explicitly declares `EMERGENCY-MODE:`
+- PR branch name matches an allowed prefix (e.g., `emergency/`, `hotfix/`, `governance-`)
+
+### Q: What does “CODEOWNERS-free” mean here?
+It means the safeguard does **not** rely on CODEOWNERS review routing.  
+Instead, it uses a dedicated bot identity + explicit gating rules to satisfy the review requirement without relaxing protections.
+
+### Q: What if the emergency workflow is missing or broken?
+Compliance includes a **warn-only preflight check** (`tools/check_emergency_workflow.py`) that emits a GitHub Actions warning if:
+- `.github/workflows/emergency-auto-approve.yml` is missing
+- the YAML is malformed
+- required gates/tokens are not referenced
+
+This prevents silent regressions.
+
+### Q: Does the bot bypass `Compliance / verify`?
+No. The bot triggers only after the **Compliance workflow_run concludes successfully**.  
+If `Compliance / verify` is red, the bot will not approve.
+
+### Q: What secret is required?
+`QT_EMERGENCY_REVIEW_TOKEN` (a token belonging to a **separate bot identity**) with permission to create PR reviews on this repository.
+
+### Q: What is the “Emergency Governance Enabled” badge?
+A transparency marker: this repo contains an explicit, auditable emergency pathway for solo-founder continuity that preserves required CI/compliance controls.
+
+### Q: When should I use Emergency Mode?
+Only when **all** “When This Mode May Be Used” conditions apply, and you explicitly declare `EMERGENCY-MODE:` in the PR title/body to make the action auditable.
+
