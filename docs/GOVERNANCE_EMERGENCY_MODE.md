@@ -62,3 +62,24 @@ No other protections may be disabled.
 - Silent merges
 
 **Violation invalidates governance integrity.**
+
+---
+
+## CODEOWNERS-Free Solo-Founder Safeguard (Never Remove Branch Protection)
+To avoid ever disabling branch protection again, qtlog uses an emergency auto-approver bot:
+
+- Branch protection stays ON (including **enforce admins**).
+- `Compliance / verify` remains required.
+- Required approving reviews remain set to **1**.
+- A bot can provide that 1 approval **only** when:
+  - the PR title/body includes `EMERGENCY-MODE:`
+  - the PR is **same-repo** (not a fork)
+  - the PR branch matches: `emergency/`, `hotfix/`, or `governance-`
+  - the `Compliance` workflow completes successfully
+
+### Setup
+1. Create a fine-grained PAT (classic PAT also works) for a *bot identity* with permission to approve PRs on this repo.
+2. Add it as repo secret: `QT_EMERGENCY_REVIEW_TOKEN`.
+3. The workflow `.github/workflows/emergency-auto-approve.yml` will then approve eligible PRs after `Compliance` succeeds.
+
+This is explicit, temporary, and auditable — and keeps branch protection intact.
