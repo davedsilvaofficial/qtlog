@@ -68,7 +68,9 @@ If/when you proceed toward ISO certification, this document becomes the seed for
 
 ---
 
-## Evidence Checklist (Auditor / Investor Quick View)
+## Evidence
+
+- **Governance Glossary:** docs/Data_Room/02_Compliance/GLOSSARY.md Checklist (Auditor / Investor Quick View)
 - [ ] README shows PASS badge and links to evidence section
 - [ ] `docs/Data_Room/COMPLIANCE_BADGE.md` includes explanation + PASS record
 - [ ] `tools/verify_sop_automation.py` enforces strict bottom-only hub verification
@@ -76,3 +78,27 @@ If/when you proceed toward ISO certification, this document becomes the seed for
 - [ ] Release workflow exists for PDF artifact attachment on tags
 - [ ] Governance epoch tags exist and are documented
 
+---
+
+## SOC 2 Auditor Narrative (Governance Control Environment)
+
+The organization enforces governance controls through automated
+Continuous Integration (CI) mechanisms designed to prevent unauthorized
+or undetected changes to authoritative documentation.
+
+Controls are executed on every proposed change and include automated
+verification of governance navigation integrity, required artifact
+presence, and linkage between operational documentation and the
+source-of-truth repository.
+
+Control failures result in immediate rejection of the change and
+prevent promotion into the production branch.
+
+These controls support SOC 2 Trust Services Criteria related to
+Security and Processing Integrity by ensuring changes are authorized,
+reviewed, verified, and fully auditable.
+
+Evidence is generated automatically through system execution and is
+retained in immutable repositories and signed releases.
+
+---

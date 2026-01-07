@@ -112,3 +112,4 @@ Investor-facing, GitHub-safe external disclosure index:
 - **Explanation:** docs/Data_Room/COMPLIANCE_BADGE.md#what-this-compliance-run-represents
 - **Verification:** Strict bottom-only QT Big Picture hub
 
+- **Governance Glossary:** docs/Data_Room/02_Compliance/GLOSSARY.md
