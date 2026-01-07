@@ -52,16 +52,13 @@ jobs:
           title="$(jq -r .title pr.json)"
           headRef="$(jq -r .headRef pr.json)"
 
-          # Same-repo only (avoid fork-based PR risks)
           if [ "$headRepo" != "$baseRepo" ]; then
             echo "Not same-repo PR; refusing auto-approve."
             exit 0
           fi
 
-          # Explicit emergency declaration required
           echo "$title $body" | grep -q "EMERGENCY-MODE:" || { echo "Missing EMERGENCY-MODE: marker; refusing."; exit 0; }
 
-          # Optional: require branch naming convention to reduce accidental triggers
           echo "$headRef" | grep -Eq '^(emergency/|governance-|hotfix/)' || { echo "Head ref '$headRef' not allowed for auto-approve; refusing."; exit 0; }
 
           echo "Gate passed."
