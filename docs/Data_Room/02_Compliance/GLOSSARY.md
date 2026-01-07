@@ -64,3 +64,33 @@ eliminating manual policy enforcement.
 
 A GitHub control that prevents changes from entering the main branch unless
 all required checks and approvals succeed.
+
+---
+
+## PR — Pull Request
+
+A **Pull Request (PR)** is a reviewed, auditable change proposal to merge code or documentation into the authoritative `main` branch.
+
+In this repository:
+- All changes to `main` **must** occur via a PR
+- PRs are blocked unless required CI checks pass
+- PRs require at least one approving review
+
+PRs are the **only** permitted path for governance-affecting changes.
+
+---
+
+## CI — Continuous Integration
+
+**Continuous Integration (CI)** is the automated execution of governance and compliance checks on every push and pull request.
+
+In this repository, CI:
+- Runs governance verification automatically
+- Enforces Notion ↔ GitHub integrity
+- Blocks merges if any control fails
+- Generates immutable evidence through execution
+
+CI is the **enforcement mechanism** behind governance-as-code.
+
+---
+

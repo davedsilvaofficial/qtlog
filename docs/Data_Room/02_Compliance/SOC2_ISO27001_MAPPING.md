@@ -11,6 +11,8 @@ This document maps Quantum Trek’s *governance-as-code* compliance system to:
 ---
 
 ## System Summary (What We Control)
+
+- **Terminology Reference:** docs/Data_Room/02_Compliance/GLOSSARY.md
 **Control objective:** Prevent undetected documentation drift and enforce an authoritative governance navigation hub.
 
 **Mechanisms (controls by construction):**

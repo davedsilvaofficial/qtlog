@@ -113,3 +113,5 @@ Investor-facing, GitHub-safe external disclosure index:
 - **Verification:** Strict bottom-only QT Big Picture hub
 
 - **Governance Glossary:** docs/Data_Room/02_Compliance/GLOSSARY.md
+- **Definitions:** See Governance Glossary (PR, CI, Governance Epoch)
+  → docs/Data_Room/02_Compliance/GLOSSARY.md
