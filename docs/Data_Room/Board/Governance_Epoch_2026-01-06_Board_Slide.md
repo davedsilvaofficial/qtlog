@@ -20,7 +20,7 @@
 
 - CI-based governance verification
 - Strict bottom-only **“New Navigation Block”** authority
-- Notion ↔ GitHub drift detection via API
+- Notion <-> GitHub drift detection via API
 - Branch protection with admin enforcement
 
 ---
