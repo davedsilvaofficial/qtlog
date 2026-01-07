@@ -15,7 +15,7 @@ jobs:
       - name: Read PR metadata
         id: meta
         env:
-          GH_TOKEN: ${{ secrets.QT_EMERGENCY_REVIEW_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           pr="${{ github.event.pull_request.number }}"
           gh api "repos/${{ github.repository }}/pulls/${pr}" --jq '{
@@ -31,7 +31,7 @@ jobs:
 
       - name: Gate (explicit + auditable + same-repo only + branch prefix)
         env:
-          GH_TOKEN: ${{ secrets.QT_EMERGENCY_REVIEW_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           headRepo="$(jq -r .headRepo pr.json)"
           baseRepo="$(jq -r .baseRepo pr.json)"
@@ -52,7 +52,7 @@ jobs:
 
       - name: Gate (verify check must be SUCCESS)
         env:
-          GH_TOKEN: ${{ secrets.QT_EMERGENCY_REVIEW_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           sha="$(jq -r .headSha pr.json)"
 
@@ -73,7 +73,7 @@ jobs:
 
       - name: Approve PR (bot review)
         env:
-          GH_TOKEN: ${{ secrets.QT_EMERGENCY_REVIEW_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           pr="$(jq -r .number pr.json)"
           gh api -X POST "repos/${{ github.repository }}/pulls/${pr}/reviews"             -f event=APPROVE             -f body="Auto-approval: Emergency Mode criteria satisfied (EMERGENCY-MODE: present + verify green + same-repo + allowed branch)."
