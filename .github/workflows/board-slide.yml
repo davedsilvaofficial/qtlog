@@ -1,0 +1,42 @@
+name: Board Slide (Epoch)
+
+on:
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*-governance-epoch*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-board-slide:
+    runs-on: ubuntu-latest
+    container: pandoc/latex:latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Ensure slide exists
+        run: |
+          test -f docs/Data_Room/Board/Governance_Epoch_2026-01-06_Board_Slide.md
+
+      - name: Build PDF
+        run: |
+          pandoc docs/Data_Room/Board/Governance_Epoch_2026-01-06_Board_Slide.md \
+            -o docs/Data_Room/Board/Governance_Epoch_2026-01-06_Board_Slide.pdf
+
+      - name: Upload artifact (always)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Governance_Epoch_2026-01-06_Board_Slide
+          path: docs/Data_Room/Board/Governance_Epoch_2026-01-06_Board_Slide.pdf
+
+      - name: Attach PDF to GitHub Release (tag pushes)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: docs/Data_Room/Board/Governance_Epoch_2026-01-06_Board_Slide.pdf
