@@ -106,6 +106,8 @@ Investor-facing, GitHub-safe external disclosure index:
 - **Status:** PASS
 - **Tag:** v2026.01.06-compliance
 - **Release:** https://github.com/davedsilvaofficial/qtlog/releases/tag/v2026.01.06-compliance
+- **SOC 2 / ISO Mapping:** docs/Data_Room/02_Compliance/SOC2_ISO27001_MAPPING.md
+- **Investor Index:** docs/Data_Room/INVESTOR_DATA_ROOM_INDEX.md
 - **Evidence:** docs/Data_Room/COMPLIANCE_BADGE.md
 - **Explanation:** docs/Data_Room/COMPLIANCE_BADGE.md#what-this-compliance-run-represents
 - **Verification:** Strict bottom-only QT Big Picture hub
