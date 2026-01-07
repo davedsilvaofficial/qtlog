@@ -8,7 +8,6 @@ permissions:
   contents: read
   pull-requests: write
   statuses: read
-  checks: read
 
 jobs:
   approve:
@@ -58,7 +57,6 @@ jobs:
           fi
 
           echo "$title $body" | grep -q "EMERGENCY-MODE:" || { echo "Missing EMERGENCY-MODE: marker; refusing."; allowed="false"; }
-
           echo "$headRef" | grep -Eq '^(emergency/|governance-|hotfix/)' || { echo "Head ref '$headRef' not allowed; refusing."; allowed="false"; }
 
           echo "allowed=$allowed" >> "$GITHUB_OUTPUT"
@@ -72,7 +70,7 @@ jobs:
         run: |
           sha="$(jq -r .headSha pr.json)"
 
-          # Accept either "verify" or "qtlog verify" as SUCCESS (covers both naming patterns).
+          # Accept either "verify" or "qtlog verify" as SUCCESS.
           state_verify="$(gh api "repos/${{ github.repository }}/commits/${sha}/status" --jq '
             (.statuses // [])
             | map(select(.context=="verify" or .context=="qtlog verify"))
