@@ -1,3 +1,5 @@
+![Emergency Governance Enabled](https://img.shields.io/badge/Emergency%20Governance-Enabled-blue)
+
 ## Daily bootstrap (qtday)
 
 - `qtday` prepares the day (Log + ToDo) and runs `--verify-all`.
