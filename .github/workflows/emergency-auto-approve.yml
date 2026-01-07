@@ -13,16 +13,20 @@ jobs:
   approve:
     runs-on: ubuntu-latest
     steps:
-      - name: Guard: require bot token secret
+      - name: Guard: require bot token secret (skip cleanly if missing)
+        id: guard
         env:
           QT_TOKEN: ${{ secrets.QT_EMERGENCY_REVIEW_TOKEN }}
         run: |
           if [ -z "${QT_TOKEN:-}" ]; then
-            echo "QT_EMERGENCY_REVIEW_TOKEN is not set; skipping auto-approve (warn-only)."
+            echo "QT_EMERGENCY_REVIEW_TOKEN is not set; skipping auto-approve."
+            echo "has_token=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          echo "has_token=true" >> "$GITHUB_OUTPUT"
 
       - name: Read PR metadata
+        if: steps.guard.outputs.has_token == 'true'
         env:
           GH_TOKEN: ${{ secrets.QT_EMERGENCY_REVIEW_TOKEN }}
         run: |
@@ -40,6 +44,7 @@ jobs:
 
       - name: Gate 1 (explicit + same-repo + branch prefix)
         id: gate1
+        if: steps.guard.outputs.has_token == 'true'
         env:
           GH_TOKEN: ${{ secrets.QT_EMERGENCY_REVIEW_TOKEN }}
         run: |
@@ -64,7 +69,7 @@ jobs:
 
       - name: Gate 2 (required status context must be SUCCESS)
         id: gate2
-        if: steps.gate1.outputs.allowed == 'true'
+        if: steps.guard.outputs.has_token == 'true' && steps.gate1.outputs.allowed == 'true'
         env:
           GH_TOKEN: ${{ secrets.QT_EMERGENCY_REVIEW_TOKEN }}
         run: |
@@ -93,7 +98,7 @@ jobs:
           echo "ok=true" >> "$GITHUB_OUTPUT"
 
       - name: Approve PR (bot review)
-        if: steps.gate1.outputs.allowed == 'true' && steps.gate2.outputs.ok == 'true'
+        if: steps.guard.outputs.has_token == 'true' && steps.gate1.outputs.allowed == 'true' && steps.gate2.outputs.ok == 'true'
         env:
           GH_TOKEN: ${{ secrets.QT_EMERGENCY_REVIEW_TOKEN }}
         run: |
