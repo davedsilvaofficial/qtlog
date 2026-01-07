@@ -107,5 +107,6 @@ Investor-facing, GitHub-safe external disclosure index:
 - **Tag:** v2026.01.06-compliance
 - **Release:** https://github.com/davedsilvaofficial/qtlog/releases/tag/v2026.01.06-compliance
 - **Evidence:** docs/Data_Room/COMPLIANCE_BADGE.md
+- **Explanation:** docs/Data_Room/COMPLIANCE_BADGE.md#what-this-compliance-run-represents
 - **Verification:** Strict bottom-only QT Big Picture hub
 
