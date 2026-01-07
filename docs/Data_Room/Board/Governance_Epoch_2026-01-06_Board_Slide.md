@@ -1,6 +1,6 @@
 # Governance Epoch — 2026-01-06
 
-**Status:** ✅ PASS  
+**Status:** PASS  
 **Epoch Tag:** `v2026.01.06-governance-epoch`  
 
 ---
