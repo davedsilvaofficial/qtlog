@@ -163,3 +163,24 @@ A transparency marker: this repo contains an explicit, auditable emergency pathw
 ### Q: When should I use Emergency Mode?
 Only when **all** “When This Mode May Be Used” conditions apply, and you explicitly declare `EMERGENCY-MODE:` in the PR title/body to make the action auditable.
 
+
+---
+
+## KEEP THIS (Do Not Forget): Required Status Check Context Must Match Reality
+
+### Symptom
+- PR shows all checks green, but merge says: **Required status check "<name>" is expected**.
+- Branch protection is requiring a **different** context name than what CI actually reports.
+
+### Canonical Fix
+1) Inspect current branch protection:
+- `gh api repos/davedsilvaofficial/qtlog/branches/main/protection --jq '{required_checks:(.required_status_checks.contexts // []), required_reviews:(.required_pull_request_reviews.required_approving_review_count // null), enforce_admins:.enforce_admins.enabled}'`
+
+2) Set the required status check context to the *actual* check name produced by CI.
+For qtlog, the canonical required check is currently: `verify`
+
+- `gh api -X PATCH repos/davedsilvaofficial/qtlog/branches/main/protection/required_status_checks -H "Accept: application/vnd.github+json" -f strict:=true -f "contexts[]=verify"`
+
+### Why this matters
+If the required context name is wrong (e.g., `Compliance / verify` when CI only reports `verify`), merges will remain blocked even though CI is green.
+
