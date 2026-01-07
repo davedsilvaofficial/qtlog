@@ -24,7 +24,6 @@ jobs:
           fi
 
       - name: Read PR metadata
-        id: meta
         env:
           GH_TOKEN: ${{ secrets.QT_EMERGENCY_REVIEW_TOKEN }}
         run: |
@@ -73,8 +72,7 @@ jobs:
         run: |
           sha="$(jq -r .headSha pr.json)"
 
-          # Prefer status contexts (what branch protection actually keys on)
-          # Accept either "verify" or "qtlog verify" as SUCCESS.
+          # Accept either "verify" or "qtlog verify" as SUCCESS (covers both naming patterns).
           state_verify="$(gh api "repos/${{ github.repository }}/commits/${sha}/status" --jq '
             (.statuses // [])
             | map(select(.context=="verify" or .context=="qtlog verify"))
