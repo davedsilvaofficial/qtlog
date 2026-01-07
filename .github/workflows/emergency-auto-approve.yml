@@ -103,6 +103,4 @@ jobs:
           GH_TOKEN: ${{ secrets.QT_EMERGENCY_REVIEW_TOKEN }}
         run: |
           pr="$(jq -r .number pr.json)"
-          gh api -X POST "repos/${{ github.repository }}/pulls/${pr}/reviews" \
-            -f event=APPROVE \
-            -f body="Auto-approval: Emergency Mode criteria satisfied (EMERGENCY-MODE: present + required status context green + same-repo + allowed branch)."
+          gh api -X POST "repos/${{ github.repository }}/pulls/${pr}/reviews"             -f event=APPROVE             -f body="Auto-approval: Emergency Mode criteria satisfied (EMERGENCY-MODE: present + required status context green + same-repo + allowed branch)."
