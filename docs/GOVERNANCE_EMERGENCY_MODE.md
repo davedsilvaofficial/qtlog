@@ -83,3 +83,38 @@ To avoid ever disabling branch protection again, qtlog uses an emergency auto-ap
 3. The workflow `.github/workflows/emergency-auto-approve.yml` will then approve eligible PRs after `Compliance` succeeds.
 
 This is explicit, temporary, and auditable — and keeps branch protection intact.
+
+---
+
+## Critical Implementation Note (Do Not Forget)
+
+### Why Emergency Auto-Approve Is Required
+GitHub enforces the following hard rules, even for solo founders and admins:
+
+1. **A pull request author can never approve their own PR**
+   - This applies even with admin privileges
+   - `gh pr review --approve` will always fail for the author
+
+2. **If branch protection requires ≥1 approving review**
+   - And `enforce_admins` is enabled
+   - And no other human collaborators exist  
+   → The PR becomes unmergeable **forever** without a second identity
+
+3. **Disabling branch protection to bypass this is a governance violation**
+   - Breaks audit continuity
+   - Invalidates compliance claims
+   - Creates silent integrity gaps
+
+### Resolution (Canonical)
+The **Emergency Auto-Approve bot** exists to satisfy the single required approval
+*without ever removing branch protection*.
+
+- The bot is a separate identity
+- It approves only after `Compliance / verify` succeeds
+- It requires an explicit `EMERGENCY-MODE:` declaration
+- All actions remain logged and auditable
+
+**If you hit a “merge blocked but all checks are green” situation again:**
+→ Verify the emergency auto-approve workflow is present and valid  
+→ Verify `QT_EMERGENCY_REVIEW_TOKEN` secret exists  
+→ Do **not** remove branch protection
