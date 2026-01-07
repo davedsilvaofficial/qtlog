@@ -6,6 +6,7 @@ This index is designed for investors/auditors to navigate the data room quickly 
 ---
 
 ## 1) Governance & Compliance (Start Here)
+- **Governance Glossary:** docs/Data_Room/02_Compliance/GLOSSARY.md
 - **Compliance Badge (evidence record):** `docs/Data_Room/COMPLIANCE_BADGE.md`
 - **Compliance Badge (visual):** `docs/Data_Room/COMPLIANCE_BADGE.svg`
 - **SOC 2 / ISO 27001 Mapping:** `docs/Data_Room/02_Compliance/SOC2_ISO27001_MAPPING.md`

@@ -319,40 +319,51 @@ sop_fail_notion_log() {
 ### QTLOG_SOP_ENV_CHECK ###
 sop_env_check() {
   local fail=0
+  local ci=0
+  local repo_dir envfile
+
+  # CI detection (GitHub Actions sets both; keep generic too)
+  if [ -n "${GITHUB_ACTIONS:-}" ] || [ -n "${CI:-}" ]; then
+    ci=1
+  fi
+
+  repo_dir="${QTLOG_REPO_DIR:-$(pwd -P)}"
+  envfile="$HOME/.config/qt/.env"
 
   echo "SOP_CHECK: ts=$(TZ=America/Toronto date '+%Y-%m-%d %H%M %Z')"
   echo "SOP_CHECK: user=$USER home=$HOME pwd=$(pwd -P)"
   echo "SOP_CHECK: termux_version=${TERMUX_VERSION:-MISSING} prefix=${PREFIX:-MISSING}"
   echo "SOP_CHECK: device=$(getprop ro.product.model 2>/dev/null || echo 'UNKNOWN')"
+  echo "SOP_CHECK: ci=${ci}"
 
-  # 1) Must be Termux (not proot)
-  if [ -z "${TERMUX_VERSION:-}" ] || [ -z "${PREFIX:-}" ]; then
-    echo "SOP_FAIL: not in a normal Termux session (TERMUX_VERSION/PREFIX missing)" >&2
+  # 1) Termux requirement (SKIP on CI)
+  if [ "$ci" -eq 0 ]; then
+    if [ -z "${TERMUX_VERSION:-}" ] || [ -z "${PREFIX:-}" ]; then
+      echo "SOP_FAIL: not in a normal Termux session (TERMUX_VERSION/PREFIX missing)" >&2
+      fail=1
+    fi
+  fi
+
+  # 2) Must be in repo (flexible path; in CI HOME/qtlog_repo is not expected)
+  if [ ! -f "${repo_dir}/qtlog.sh" ]; then
+    echo "SOP_FAIL: qtlog.sh not found at repo_dir=${repo_dir}" >&2
     fail=1
   fi
 
-  # 2) Must be in repo
-  if [ ! -d "$HOME/qtlog_repo" ] || [ ! -f "$HOME/qtlog_repo/qtlog.sh" ]; then
-    echo "SOP_FAIL: repo missing at $HOME/qtlog_repo" >&2
-    fail=1
+  # 3) Env file requirement (SKIP on CI unless you decide to enforce later)
+  if [ "$ci" -eq 0 ]; then
+    if [ ! -f "$envfile" ]; then
+      echo "SOP_FAIL: missing envfile $envfile" >&2
+      fail=1
+    fi
   fi
 
-  # 3) Must have env
-  if [ ! -f "$HOME/.config/qt/.env" ]; then
-    echo "SOP_FAIL: missing envfile $HOME/.config/qt/.env" >&2
-    fail=1
-  fi
-
-  # 4) Must have Notion creds when doing Notion ops
+  # 4) Notion prereqs when explicitly requested
   if [ -n "${1:-}" ] && [ "$1" = "need_notion" ]; then
     if [ -z "${NOTION_API_KEY:-}" ] || [ -z "${NOTION_LOG_PAGE_ID:-}" ]; then
       echo "SOP_FAIL: NOTION_API_KEY / NOTION_LOG_PAGE_ID missing" >&2
       fail=1
     fi
-  fi
-
-  # 5) Must have curl/jq for Notion ops
-  if [ -n "${1:-}" ] && [ "$1" = "need_notion" ]; then
     command -v curl >/dev/null 2>&1 || { echo "SOP_FAIL: curl missing" >&2; fail=1; }
     command -v jq   >/dev/null 2>&1 || { echo "SOP_FAIL: jq missing" >&2; fail=1; }
   fi
@@ -403,8 +414,12 @@ HELP
 
 # --- STAMP & RECONCILE HELPERS ---
 if [[ "${1:-}" == "--stamp-now" ]]; then
-    TZ="America/New_York" date "+%Y-%m-%d %H:%M:%S ET"
-    exit 0
+  if [ $# -ne 1 ]; then
+    echo "qtlog: --stamp-now takes no arguments" >&2
+    exit 1
+  fi
+  TZ="America/New_York" date "+%Y-%m-%d %H:%M:%S ET"
+  exit 0
 fi
 
 if [[ "${1:-}" == "--reconcile" ]]; then
@@ -566,93 +581,19 @@ while [ $# -gt 0 ]; do
       shift
       break
       ;;
-
       --sop-verify)
-
-        # Read-only: validate SOP invariants. Inline (cannot rely on functions defined later).
-
+        # Read-only: validate SOP invariants (delegated to sop_env_check).
         shift
-
         rc=0
-
-        echo "SOP_CHECK: ts=$(TZ=America/Toronto date '+%Y-%m-%d %H%M %Z')"
-
-        echo "SOP_CHECK: user=$USER home=$HOME pwd=$(pwd -P)"
-
-        echo "SOP_CHECK: termux_version=${TERMUX_VERSION:-MISSING} prefix=${PREFIX:-MISSING}"
-
-        echo "SOP_CHECK: device=$(getprop ro.product.model 2>/dev/null || echo 'UNKNOWN')"
-
-      
-
-        # 1) Must be Termux (not proot)
-
-        if [ -z "${TERMUX_VERSION:-}" ] || [ -z "${PREFIX:-}" ]; then
-
-          echo "SOP_FAIL: not in a normal Termux session (TERMUX_VERSION/PREFIX missing)" >&2
-
+        if ! sop_env_check "${1:-}"; then
           rc=1
-
         fi
-
-      
-
-        # 2) Must be in repo
-
-        if [ ! -d "$HOME/qtlog_repo" ] || [ ! -f "$HOME/qtlog_repo/qtlog.sh" ]; then
-
-          echo "SOP_FAIL: repo missing at $HOME/qtlog_repo" >&2
-
-          rc=1
-
-        fi
-
-      
-
-        # 3) Must have env
-
-        if [ ! -f "$HOME/.config/qt/.env" ]; then
-
-          echo "SOP_FAIL: missing envfile $HOME/.config/qt/.env" >&2
-
-          rc=1
-
-        fi
-
-      
-
-        # Optional Notion prereq check
-
-        if [ "${1:-}" = "need_notion" ]; then
-
-          if [ -z "${NOTION_API_KEY:-}" ] || [ -z "${NOTION_LOG_PAGE_ID:-}" ]; then
-
-            echo "SOP_FAIL: NOTION_API_KEY / NOTION_LOG_PAGE_ID missing" >&2
-
-            rc=1
-
-          fi
-
-          command -v curl >/dev/null 2>&1 || { echo "SOP_FAIL: curl missing" >&2; rc=1; }
-
-          command -v jq   >/dev/null 2>&1 || { echo "SOP_FAIL: jq missing" >&2; rc=1; }
-
-        fi
-
-      
-
         if [ "$rc" -eq 0 ]; then
-
           echo "SOP_VERIFY_OK"
-
         else
-
           echo "SOP_VERIFY_FAIL" >&2
-
         fi
-
         exit "$rc"
-
         ;;
 
       --sop-version)

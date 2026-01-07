@@ -69,3 +69,4 @@ This is **institutional-grade, audit-ready infrastructure**.
 
 ---
 
+- **Governance Glossary:** docs/Data_Room/02_Compliance/GLOSSARY.md
