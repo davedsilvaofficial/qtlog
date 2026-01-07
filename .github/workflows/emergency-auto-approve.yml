@@ -1,9 +1,8 @@
 name: Emergency Auto-Approve (Solo-Founder)
 
 on:
-  workflow_run:
-    workflows: ["Compliance"]
-    types: [completed]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
@@ -11,38 +10,26 @@ permissions:
 
 jobs:
   approve:
-    if: >
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - name: Derive PR number
-        id: pr
-        run: |
-          pr_number="$(jq -r '.workflow_run.pull_requests[0].number // empty' "$GITHUB_EVENT_PATH")"
-          if [ -z "$pr_number" ]; then
-            echo "No PR found for this workflow_run; exiting."
-            exit 0
-          fi
-          echo "number=$pr_number" >> "$GITHUB_OUTPUT"
-
-      - name: Read PR metadata (title/body/head repo)
+      - name: Read PR metadata
         id: meta
         env:
           GH_TOKEN: ${{ secrets.QT_EMERGENCY_REVIEW_TOKEN }}
         run: |
-          pr="${{ steps.pr.outputs.number }}"
+          pr="${{ github.event.pull_request.number }}"
           gh api "repos/${{ github.repository }}/pulls/${pr}" --jq '{
             number:.number,
             title:.title,
             body:(.body // ""),
             headRepo:.head.repo.full_name,
             baseRepo:.base.repo.full_name,
-            headRef:.head.ref
+            headRef:.head.ref,
+            headSha:.head.sha
           }' > pr.json
           cat pr.json
 
-      - name: Gate (explicit + auditable + same-repo only)
+      - name: Gate (explicit + auditable + same-repo only + branch prefix)
         env:
           GH_TOKEN: ${{ secrets.QT_EMERGENCY_REVIEW_TOKEN }}
         run: |
@@ -59,15 +46,34 @@ jobs:
 
           echo "$title $body" | grep -q "EMERGENCY-MODE:" || { echo "Missing EMERGENCY-MODE: marker; refusing."; exit 0; }
 
-          echo "$headRef" | grep -Eq '^(emergency/|governance-|hotfix/)' || { echo "Head ref '$headRef' not allowed for auto-approve; refusing."; exit 0; }
+          echo "$headRef" | grep -Eq '^(emergency/|governance-|hotfix/)' || { echo "Head ref '$headRef' not allowed; refusing."; exit 0; }
 
           echo "Gate passed."
+
+      - name: Gate (verify check must be SUCCESS)
+        env:
+          GH_TOKEN: ${{ secrets.QT_EMERGENCY_REVIEW_TOKEN }}
+        run: |
+          sha="$(jq -r .headSha pr.json)"
+
+          # Query check runs on the PR head SHA and require "verify" to be SUCCESS
+          concl="$(gh api "repos/${{ github.repository }}/commits/${sha}/check-runs"             -H "Accept: application/vnd.github+json"             --jq '[.check_runs[] | select(.name=="verify") | .conclusion][0] // empty')"
+
+          if [ -z "$concl" ]; then
+            echo "verify check-run not found on SHA ${sha}; refusing auto-approve."
+            exit 0
+          fi
+
+          if [ "$concl" != "success" ]; then
+            echo "verify is not success (got: $concl); refusing auto-approve."
+            exit 0
+          fi
+
+          echo "verify is success."
 
       - name: Approve PR (bot review)
         env:
           GH_TOKEN: ${{ secrets.QT_EMERGENCY_REVIEW_TOKEN }}
         run: |
-          pr="${{ steps.pr.outputs.number }}"
-          gh api -X POST "repos/${{ github.repository }}/pulls/${pr}/reviews" \
-            -f event=APPROVE \
-            -f body="Auto-approval: Emergency Mode criteria satisfied (EMERGENCY-MODE: present + Compliance green + same-repo)."
+          pr="$(jq -r .number pr.json)"
+          gh api -X POST "repos/${{ github.repository }}/pulls/${pr}/reviews"             -f event=APPROVE             -f body="Auto-approval: Emergency Mode criteria satisfied (EMERGENCY-MODE: present + verify green + same-repo + allowed branch)."

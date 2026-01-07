@@ -25,6 +25,10 @@ jobs:
         with:
           python-version: "3.11"
 
+- name: Governance verification (one-command)
+  run: |
+    tools/governance_verify.sh
+
 - name: Emergency governance preflight (warn-only)
   run: |
     python tools/check_emergency_workflow.py
