@@ -403,8 +403,12 @@ HELP
 
 # --- STAMP & RECONCILE HELPERS ---
 if [[ "${1:-}" == "--stamp-now" ]]; then
-    TZ="America/New_York" date "+%Y-%m-%d %H:%M:%S ET"
-    exit 0
+  if [ $# -ne 1 ]; then
+    echo "qtlog: --stamp-now takes no arguments" >&2
+    exit 1
+  fi
+  TZ="America/New_York" date "+%Y-%m-%d %H:%M:%S ET"
+  exit 0
 fi
 
 if [[ "${1:-}" == "--reconcile" ]]; then
