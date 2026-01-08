@@ -1,0 +1,40 @@
+name: Verify Status Bridge (legacy context)
+
+on:
+  workflow_run:
+    workflows: ["qtlog verify", "Compliance"]
+    types: [completed]
+
+permissions:
+  statuses: write
+  contents: read
+
+jobs:
+  set-status:
+    if: github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set legacy status context "verify" on head SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          sha="${{ github.event.workflow_run.head_sha }}"
+          concl="${{ github.event.workflow_run.conclusion }}"
+          repo="${{ github.repository }}"
+
+          # Map workflow_run conclusion -> commit status state
+          state="failure"
+          if [ "$concl" = "success" ]; then state="success"; fi
+          if [ "$concl" = "neutral" ] || [ "$concl" = "skipped" ]; then state="success"; fi
+
+          desc="Bridged from workflow_run (${concl})"
+          target="${{ github.event.workflow_run.html_url }}"
+
+          gh api -X POST "repos/${repo}/statuses/${sha}" \
+            -f state="$state" \
+            -f context="verify" \
+            -f description="$desc" \
+            -f target_url="$target"
+
+          echo "Set status context verify=$state on $sha"
