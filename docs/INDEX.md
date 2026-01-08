@@ -7,3 +7,6 @@ This is the canonical index of repository documentation.
 
 ## CI / Compliance
 - (Add additional docs here as they are created)
+
+## Governance Snapshots
+- [Snapshots (timestamped)](./Governance/Snapshots/README.md)
