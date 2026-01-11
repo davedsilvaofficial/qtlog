@@ -43,3 +43,6 @@ This is the canonical index of repository documentation.
 
 ## GitHub Governance (IPO / Audit)
 - [Governance — What Is Formally True](./Data_Room/02_Compliance/GOVERNANCE_FORMALLY_TRUE.md)
+
+## GitHub Governance (IPO / Audit)
+- [Governance — Current State (High-Confidence Summary)](./Data_Room/02_Compliance/GOVERNANCE_CURRENT_STATE_HIGH_CONFIDENCE.md)
