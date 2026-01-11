@@ -117,3 +117,10 @@ Investor-facing, GitHub-safe external disclosure index:
 - **Governance Glossary:** docs/Data_Room/02_Compliance/GLOSSARY.md
 - **Definitions:** See Governance Glossary (PR, CI, Governance Epoch)
   → docs/Data_Room/02_Compliance/GLOSSARY.md
+
+---
+
+## Documentation Navigation (For Developers & Auditors)
+- Start here: **[MASTER_INDEX.md](./MASTER_INDEX.md)** (authoritative)
+- Repo structure guide: **[Documentation Architecture & Navigation](./docs/DOCUMENTATION_ARCHITECTURE.md)**
+- Investor/Diligence subset: **[Investor Data Room Index](./docs/Data_Room/INVESTOR_DATA_ROOM_INDEX.md)**
