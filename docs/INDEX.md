@@ -37,3 +37,6 @@ This is the canonical index of repository documentation.
 
 ## GitHub Governance (IPO / Audit)
 - [Governance Workflow Proof — PR #6](./Data_Room/02_Compliance/GITHUB_GOVERNANCE_WORKFLOW_PROOF_PR6.md)
+
+## GitHub Governance (IPO / Audit)
+- [CODEOWNERS Enforcement — Evidence Record](./Data_Room/02_Compliance/GITHUB_CODEOWNER_ENFORCEMENT_EVIDENCE.md)
