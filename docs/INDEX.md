@@ -40,3 +40,6 @@ This is the canonical index of repository documentation.
 
 ## GitHub Governance (IPO / Audit)
 - [CODEOWNERS Enforcement — Evidence Record](./Data_Room/02_Compliance/GITHUB_CODEOWNER_ENFORCEMENT_EVIDENCE.md)
+
+## GitHub Governance (IPO / Audit)
+- [Governance — What Is Formally True](./Data_Room/02_Compliance/GOVERNANCE_FORMALLY_TRUE.md)
