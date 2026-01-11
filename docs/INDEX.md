@@ -26,3 +26,6 @@ This is the canonical index of repository documentation.
 
 ## GitHub Governance (IPO / Audit)
 - [GitHub Branch Protection — Test PR Evidence](./Data_Room/02_Compliance/GITHUB_BRANCH_PROTECTION_TEST_PR_EVIDENCE.md)
+
+## Audit Readiness
+- [Auditor Readiness — One-Page Summary](./Data_Room/02_Compliance/AUDITOR_READINESS_ONE_PAGER.md)

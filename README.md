@@ -124,3 +124,8 @@ Investor-facing, GitHub-safe external disclosure index:
 - Start here: **[MASTER_INDEX.md](./MASTER_INDEX.md)** (authoritative)
 - Repo structure guide: **[Documentation Architecture & Navigation](./docs/DOCUMENTATION_ARCHITECTURE.md)**
 - Investor/Diligence subset: **[Investor Data Room Index](./docs/Data_Room/INVESTOR_DATA_ROOM_INDEX.md)**
+
+---
+
+## Governance Status
+![Compliance](https://github.com/davedsilvaofficial/qtlog/actions/workflows/compliance.yml/badge.svg)
