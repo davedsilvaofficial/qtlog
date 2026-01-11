@@ -1,0 +1,14 @@
+
+# QT_GOVERNANCE_CODEOWNERS
+# Governance-critical areas require governance account review.
+# Note: CODEOWNERS works with PR reviews when code owner reviews are enabled in branch protections.
+.github/ @quantumtrek-governance
+.github/workflows/ @quantumtrek-governance
+docs/Data_Room/ @quantumtrek-governance
+docs/Governance/ @quantumtrek-governance
+docs/GOVERNANCE_*.md @quantumtrek-governance
+SECURITY.md @quantumtrek-governance
+SOP.md @quantumtrek-governance
+AUDITOR_README.md @quantumtrek-governance
+MASTER_INDEX.md @quantumtrek-governance
+README.md @quantumtrek-governance
