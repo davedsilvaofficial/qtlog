@@ -1,1 +1,1 @@
-Test PR created 2026-01-11 0943 ET to verify branch protections + required checks (publish-guard, sop, verify).
+Test PR created 2026-01-11 0945 ET to verify branch protections + required checks (publish-guard, sop, verify).
