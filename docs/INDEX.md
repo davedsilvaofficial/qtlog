@@ -34,3 +34,6 @@ This is the canonical index of repository documentation.
 - [Governance Baseline Lock](../GOVERNANCE_BASELINE_LOCK.md)
 - [Baseline ID Pattern](./Data_Room/02_Compliance/BASELINE_ID_PATTERN.md)
 - [SEC Governance Baseline Narrative](./02_Finance/SEC_GOVERNANCE_BASELINE_NARRATIVE.md)
+
+## GitHub Governance (IPO / Audit)
+- [Governance Workflow Proof — PR #6](./Data_Room/02_Compliance/GITHUB_GOVERNANCE_WORKFLOW_PROOF_PR6.md)
