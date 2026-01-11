@@ -29,3 +29,8 @@ This is the canonical index of repository documentation.
 
 ## Audit Readiness
 - [Auditor Readiness — One-Page Summary](./Data_Room/02_Compliance/AUDITOR_READINESS_ONE_PAGER.md)
+
+## Governance Baseline
+- [Governance Baseline Lock](../GOVERNANCE_BASELINE_LOCK.md)
+- [Baseline ID Pattern](./Data_Room/02_Compliance/BASELINE_ID_PATTERN.md)
+- [SEC Governance Baseline Narrative](./02_Finance/SEC_GOVERNANCE_BASELINE_NARRATIVE.md)
