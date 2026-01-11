@@ -1,0 +1,43 @@
+name: Governance Snapshot (On Main Update)
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git author
+        run: |
+          git config user.name  "qtlog-governance-bot"
+          git config user.email "qtlog-governance-bot@users.noreply.github.com"
+
+      - name: Run snapshot + commit (bot token)
+        env:
+          GH_TOKEN: ${{ secrets.QT_EMERGENCY_REVIEW_TOKEN }}
+          QT_EMERGENCY_REVIEW_TOKEN: ${{ secrets.QT_EMERGENCY_REVIEW_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${QT_EMERGENCY_REVIEW_TOKEN:-}" ]; then
+            echo "QT_EMERGENCY_REVIEW_TOKEN missing; refusing to push snapshots."
+            exit 1
+          fi
+
+          # Ensure pushes authenticate using the bot token
+          git remote set-url origin "https://x-access-token:${QT_EMERGENCY_REVIEW_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+
+          # main already checked out by actions/checkout when push triggered,
+          # but keep it explicit + up to date:
+          git checkout main
+          git pull --ff-only origin main
+
+          tools/governance_snapshot.sh --commit
