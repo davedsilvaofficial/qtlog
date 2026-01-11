@@ -46,3 +46,18 @@ CI workflow:
 ## Release marker
 Traceability lock tag:
 - `v1.0.0 (traceability-locked)`
+
+---
+
+## Index Authority (Navigation Control)
+
+For audit/due diligence navigation, the authoritative index is:
+
+- **MASTER_INDEX.md** (repository-wide single source of truth)
+
+Secondary convenience indexes:
+- `docs/INDEX.md` (docs folder canonical index)
+- `docs/README.md` (secondary docs landing page)
+- `docs/index.md` (intentional redirect; non-authoritative)
+
+If any links conflict, defer to **MASTER_INDEX.md**.

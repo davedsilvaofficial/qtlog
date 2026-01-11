@@ -99,3 +99,26 @@ When adding or rotating credentials (GitHub tokens, API keys, secrets) on Androi
 
 ---
 
+
+---
+
+## Documentation Placement Rules (Mandatory)
+
+To preserve auditability and avoid index ambiguity:
+
+1) **MASTER_INDEX.md is the authoritative documentation index.**
+   - All new documentation intended for long-term reference MUST be linked there.
+
+2) Folder-level indexes (`docs/INDEX.md`, `docs/README.md`) are convenience views only.
+
+3) Do NOT create new index files unless explicitly required.
+   - `docs/index.md` exists as a redirect and must remain non-authoritative.
+
+4) New documentation MUST:
+   - be placed in the correct zone (`01_Legal`, `02_Finance`, `03_Technical`, etc.),
+   - use stable, descriptive filenames,
+   - and be linked into `MASTER_INDEX.md`.
+
+5) Governance evidence and snapshots are controlled artifacts and must not be casually edited.
+
+Failure to follow these rules creates audit risk and will be corrected during review.
